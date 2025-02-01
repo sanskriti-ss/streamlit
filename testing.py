@@ -11,6 +11,14 @@ def main():
     st.title("Visualizing BacDive")
     st.write("Work in progress.")
 
+    # Load CSV files from the data_files subfolder
+    data_folder = 'data_files'
+    csv_files = [f for f in os.listdir(data_folder) if f.endswith('.csv')]
+    data_frames = {file: pd.read_csv(os.path.join(data_folder, file)) for file in csv_files}
+
+    if data_frames:
+        st.write("CSV files have been successfully loaded.")
+
     # Set up the sidebar navigation
     st.sidebar.title("Navigation")
     tab = st.sidebar.radio("Go to", ["General Overview", "Circos", "Trends"])
@@ -29,6 +37,5 @@ def main():
         st.write("This section will display trends in antibiotic resistance/utilization over time.")
 
 main()
-
 
 
