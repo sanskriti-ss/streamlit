@@ -1,14 +1,19 @@
 # make sure you have streamlit. pip install streamlit
 import streamlit as st
+import sys
+st.write(sys.executable)
+
+import seaborn as sns
+import pandas as pd
+import numpy as np
+import os
+import matplotlib.pyplot as plt
+import textwrap
+
 
 
 def main():
-    import seaborn as sns
-    import pandas as pd
-    import numpy as np
-    import os
-    import matplotlib.pyplot as plt
-    import textwrap
+    
     st.title("Visualizing BacDive")
     st.write("Work in progress.")
 
