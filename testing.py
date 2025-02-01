@@ -3,6 +3,7 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import os
+pip install seaborn
 import seaborn as sns
 import matplotlib.pyplot as plt
 import textwrap
