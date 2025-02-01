@@ -4,11 +4,10 @@ pandas-datareader
 matplotlib
 seaborn
 plotly
-Pillow
+
 scipy
 statsmodels
 scikit-learn
 streamlit
 streamlit-option-menu
 tensorflow
-yfinance
