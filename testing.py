@@ -1,10 +1,9 @@
 # make sure you have streamlit. pip install streamlit
 import streamlit as st
+import seaborn as sns
 import pandas as pd
 import numpy as np
 import os
-pip install seaborn
-import seaborn as sns
 import matplotlib.pyplot as plt
 import textwrap
 
