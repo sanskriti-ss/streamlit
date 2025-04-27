@@ -38,7 +38,7 @@ def display(data_frames):
     # Generate heatmap by numbers
     st.subheader("By Numbers")
     if st.button("Generate Heatmap by Numbers"):
-        buf, title = create_heatmap_by_numbers(data_frames[selected_file], num_genera, num_metabolites)
+        buf, title = _generate_heatmap_by_numbers(data_frames[selected_file], num_genera, num_metabolites)
         st.download_button("Download Heatmap", buf, file_name=f"{title.replace(' ', '_')}.jpg", mime="image/jpeg")
 
     st.markdown("---")
@@ -46,5 +46,15 @@ def display(data_frames):
     # Generate heatmap by proportions
     st.subheader("By Proportions")
     if st.button("Generate Heatmap by Proportions"):
-        buf, title = create_heatmap_by_proportions(data_frames[selected_file], num_genera, num_metabolites)
+        buf, title = _generate_heatmap_by_proportions(data_frames[selected_file], num_genera, num_metabolites)
         st.download_button("Download Heatmap", buf, file_name=f"{title.replace(' ', '_')}.jpg", mime="image/jpeg")
+
+@st.cache_data
+def _generate_heatmap_by_numbers(df, num_genera, num_metabolites):
+    # Heavy lifting: creating heatmap by numbers
+    return create_heatmap_by_numbers(df, num_genera, num_metabolites)
+
+@st.cache_data
+def _generate_heatmap_by_proportions(df, num_genera, num_metabolites):
+    # Heavy lifting: creating heatmap by proportions
+    return create_heatmap_by_proportions(df, num_genera, num_metabolites)

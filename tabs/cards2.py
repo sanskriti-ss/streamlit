@@ -1,5 +1,17 @@
 import streamlit as st
 import pandas as pd
+from pathlib import Path
+from PIL import Image
+
+# point to your icons folder
+ICON_DIR = Path(__file__).parent / "icons"
+
+ICON_PATHS = {
+    "Production": ICON_DIR / "production.png",
+    "Utilization": ICON_DIR / "utilization.png",
+    "Resistance": ICON_DIR / "resistance.png",
+    "Sensitivity": ICON_DIR / "sensitivity.png",
+}
 
 # Helper: Render a rectangle with given count and rank.
 def render_shape(count, rank, color, width=80, height=40):
