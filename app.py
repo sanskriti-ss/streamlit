@@ -3,7 +3,7 @@ st.set_page_config(page_title="Visualizing BacDive")
 
 import os
 import pandas as pd
-from tabs import general_overview, circos, trends, cards, by_the_numbers
+from tabs import general_overview, circos, trends, cards, by_the_numbers, comparison
 from utils.data_loader import load_data
 
 
