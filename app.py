@@ -17,7 +17,7 @@ if data_frames:
 
 # Sidebar Navigation
 st.sidebar.title("Navigation")
-tab = st.sidebar.radio("Go to", ["General Overview", "Circos", "Trends", "Cards", "By the Numbers"])
+tab = st.sidebar.radio("Go to", ["General Overview", "Circos", "Trends", "Cards", "By the Numbers", "Comparison"])
 
 # Route to the correct tab
 if tab == "General Overview":
@@ -30,3 +30,5 @@ elif tab == "Cards":
     cards.display(data_frames)
 elif tab == "By the Numbers":
     by_the_numbers.display(data_frames)
+elif tab == "Comparison":
+    comparison.display(data_frames)
