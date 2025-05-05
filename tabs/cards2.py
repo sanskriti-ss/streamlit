@@ -40,8 +40,8 @@ def render_shape(count, rank, color, width=80, height=40):
 
 # Cached helper to compute ranking based on species_count from the Production file.
 @st.cache_data
-def get_genus_ranking(data_frames, strain_option="No Strains"):
-    prod_key = f"step4_positively_tested_by_genera_prod_{'nostrain' if strain_option=='No Strains' else 'yesstrain'}.csv"
+def get_genus_ranking(data_frames, strain_option="Isolate"):
+    prod_key = f"step4_positively_tested_by_genera_prod_{'nostrain' if strain_option=='Isolate' else 'yesstrain'}.csv"
     if prod_key not in data_frames:
         return {}
     df_prod = data_frames[prod_key]
@@ -52,11 +52,11 @@ def get_genus_ranking(data_frames, strain_option="No Strains"):
 
 # Cached helper to compute unique metabolite counts ranking for a given category.
 @st.cache_data
-def get_unique_mets_ranking(data_frames, cat, strain_option="No Strains"):
+def get_unique_mets_ranking(data_frames, cat, strain_option="Isolate"):
     cat_mapping = {"Production": "prod", "Utilization": "util", "Resistance": "res", "Sensitivity": "sen"}
     if cat not in cat_mapping:
         return {}
-    file_key = f"step4_positively_tested_by_genera_{cat_mapping[cat]}_{'nostrain' if strain_option=='No Strains' else 'yesstrain'}.csv"
+    file_key = f"step4_positively_tested_by_genera_{cat_mapping[cat]}_{'nostrain' if strain_option=='Isolate' else 'yesstrain'}.csv"
     if file_key not in data_frames:
         return {}
     df_cat = data_frames[file_key].copy()
@@ -81,14 +81,14 @@ def display(data_frames):
     genera = sorted(df["genus"].unique())
     
     # Compute rankings for each strain option separately.
-    species_ranking_no = get_genus_ranking(data_frames, strain_option="No Strains")
-    species_ranking_yes = get_genus_ranking(data_frames, strain_option="Yes Strains")
+    species_ranking_no = get_genus_ranking(data_frames, strain_option="Isolate")
+    species_ranking_yes = get_genus_ranking(data_frames, strain_option="Strain")
     
     unique_rankings_no = {}
     unique_rankings_yes = {}
     for cat in ["Production", "Utilization", "Resistance", "Sensitivity"]:
-        unique_rankings_no[cat] = get_unique_mets_ranking(data_frames, cat, strain_option="No Strains")
-        unique_rankings_yes[cat] = get_unique_mets_ranking(data_frames, cat, strain_option="Yes Strains")
+        unique_rankings_no[cat] = get_unique_mets_ranking(data_frames, cat, strain_option="Isolate")
+        unique_rankings_yes[cat] = get_unique_mets_ranking(data_frames, cat, strain_option="Strain")
     
     # Updated pastel color mapping.
     pastel_colors = {
