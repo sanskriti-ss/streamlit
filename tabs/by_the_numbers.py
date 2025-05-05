@@ -10,7 +10,7 @@ def summary_bargraphs(data_frames):
     
     # Widget commands (outside cached functions)
     test_type = st.radio("Choose Test Type:", ["Negatively Tested", "Positively Tested"], index=1)
-    strain_option = st.radio("Include Strains?", ["No Strains", "Yes Strains"], index=0)
+    strain_option = st.radio("Include Strains?", ["Isolate", "Strain"], index=0)
     sort_category = st.selectbox(
         "Select category to sort top 15 by:",
         ["Production", "Utilization", "Resistance", "Sensitivity"],
@@ -43,7 +43,7 @@ def summary_bargraphs(data_frames):
 def _compute_combined_df(data_frames, test_type, strain_option):
     # Process widget input values
     test_type_short = "negatively" if test_type == "Negatively Tested" else "positively"
-    strain_short = "nostrain" if strain_option == "No Strains" else "yesstrain"
+    strain_short = "nostrain" if strain_option == "Isolate" else "yesstrain"
     
     # Mapping for the four categories
     category_mapping = {
@@ -171,7 +171,7 @@ def display(data_frames):
     )
     homo_strain = st.selectbox(
         "Select Strain Option:",
-        ["No Strains", "Yes Strains"],
+        ["Isolate", "Strain"],
         index=0
     )
     
@@ -201,7 +201,7 @@ def _compute_homogeneous_summary(data_frames, homo_category, homo_strain):
     if homo_category not in cat_mapping:
         raise ValueError("Invalid metabolite category selection.")
     cat_short = cat_mapping[homo_category]
-    strain_short = "nostrain" if homo_strain == "No Strains" else "yesstrain"
+    strain_short = "nostrain" if homo_strain == "Isolate" else "yesstrain"
     
     # Construct file keys.
     file_key_pos = f"step4_positively_tested_by_genera_{cat_short}_{strain_short}.csv"
