@@ -15,7 +15,7 @@ def display(data_frames):
     if "test_type" not in st.session_state:
         st.session_state.test_type = "Positively Tested"
     if "strain_option" not in st.session_state:
-        st.session_state.strain_option = "No Strains"
+        st.session_state.strain_option = "Isolate"
     if "selected_genera" not in st.session_state:
         st.session_state.selected_genera = []
 
@@ -25,13 +25,13 @@ def display(data_frames):
         key="test_type_radio"
     )
     st.session_state.strain_option = st.radio(
-        "Include Strains?", ["No Strains", "Yes Strains"],
+        "Include Strains?", ["Isolate", "Strain"],
         key="strain_option_radio"
     )
 
     ### Step 3: Mapping selections to filenames
     test_type_short = "negatively" if st.session_state.test_type == "Negatively Tested" else "positively"
-    strain_short = "nostrain" if st.session_state.strain_option == "No Strains" else "yesstrain"
+    strain_short = "nostrain" if st.session_state.strain_option == "Isolate" else "yesstrain"
     category_mapping = {
         "Production": "prod",
         "Utilization": "util",
