@@ -12,12 +12,12 @@ def display(data_frames):
 
     # User choices
     test_type = st.radio("Choose Test Type:", ["Negatively Tested", "Positively Tested"])
-    strain_option = st.radio("Include Strains?", ["No Strains", "Yes Strains"])
+    strain_option = st.radio("Include Strains?", ["Isolate", "Strain"])
     category = st.selectbox("Select Category:", ["Production", "Utilization", "Resistance", "Sensitivity"])
 
     # Mapping selections to filename
     test_type_short = "negatively" if test_type == "Negatively Tested" else "positively"
-    strain_short = "nostrain" if strain_option == "No Strains" else "yesstrain"
+    strain_short = "nostrain" if strain_option == "Strain" else "yesstrain"
     category_mapping = {"Production": "prod", "Utilization": "util", "Resistance": "res", "Sensitivity": "sen"}
     category_short = category_mapping[category]
 
