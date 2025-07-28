@@ -356,10 +356,10 @@ def generate_secondary_files(
     result_files = {}
 
     secondary_df_map = {
-        'Resistance + Nostrains': df_pos_res_nostrain,
-        'Resistance + Onlystrains': df_pos_res_yesstrain,
-        'Sensitivity + Nostrains': df_pos_sen_nostrain,
-        'Sensitivity + Onlystrains': df_pos_sen_yesstrain
+        'Resistance + Isolates': df_pos_res_nostrain,
+        'Resistance + Strains': df_pos_res_yesstrain,
+        'Sensitivity + Isolates': df_pos_sen_nostrain,
+        'Sensitivity + Strains': df_pos_sen_yesstrain
     }
 
     # We'll iterate over each secondary dataset the user selected
@@ -540,10 +540,10 @@ def crop_df(values, df):
 def generate_files(values):
     # based on dropdown selection, first creating the map, selecting it
     res_or_sens_map = {
-    'Resistance + Nostrains': ('res_1strain', df_pos_res_nostrain),
-    'Resistance + Onlystrains': ('res_0strain',  df_pos_res_yesstrain),
-    'Sensitivity + Nostrains':  ('sen_1strain',  df_pos_sen_nostrain),
-    'Sensitivity + Onlystrains': ('sen_0strain', df_pos_sen_yesstrain)
+    'Resistance + Isolates': ('res_1strain', df_pos_res_nostrain),
+    'Resistance + Strains': ('res_0strain',  df_pos_res_yesstrain),
+    'Sensitivity + Isolates':  ('sen_1strain',  df_pos_sen_nostrain),
+    'Sensitivity + Strains': ('sen_0strain', df_pos_sen_yesstrain)
     }
 
     # determining file name for edge_file

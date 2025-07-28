@@ -33,8 +33,8 @@ def display(data_frames):
     st.write("Select up to 10 genera and see which metabolites fall into each category.")
 
     # 1) Choose strain
-    strain_option = st.radio("Strain Option", ["No Strains","Yes Strains"])
-    suffix = "nostrain" if strain_option=="No Strains" else "yesstrain"
+    strain_option = st.radio("Strain Option", ["Isolates","Strains"])
+    suffix = "nostrain" if strain_option=="Isolates" else "yesstrain"
     dfs = load_category_data(suffix)
 
     # 2) Genus selector
