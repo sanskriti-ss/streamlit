@@ -144,8 +144,8 @@ def display(data_frames):
     
     st.write(f"**Number of Metabolites:** {num_metabolites}")
     st.write(f"**Number of Genera:** {num_genera}")
-    st.write(f"**Total Number of (No Strain) Species:** {total_species_nostrain}")
-    st.write(f"**Total Number (Yes Strain) Species:** {total_species_yesstrain}")
+    st.write(f"**Total Number of (Isolate) Species:** {total_species_nostrain}")
+    st.write(f"**Total Number (Strain) Species:** {total_species_yesstrain}")
     
     # Draw the grouped bar chart below the summaries.
     summary_bargraphs(data_frames)

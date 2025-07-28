@@ -573,7 +573,7 @@ def display():
     st.header("Circos Settings")
     values = {}
     values['res_or_sens'] = st.selectbox("Primary Dataset:", 
-        ['Resistance + Nostrains', 'Resistance + Onlystrains', 'Sensitivity + Nostrains', 'Sensitivity + Onlystrains'], index=0)
+        ['Resistance + Isolates', 'Resistance + Strains', 'Sensitivity + Isolates', 'Sensitivity + Strains'], index=0)
     values['gen_or_met'] = st.selectbox("Sort by Metabolite or Genus:", 
         ['Metabolites', 'Genera'], index=1)
     # values['choose_colours'] = st.selectbox("Selection for Dynamic Line Colour:", 
@@ -581,12 +581,12 @@ def display():
     values['filter_strength'] = st.selectbox("Selection for Pairs:", 
         ['Doubles', 'Triples', 'Quadruples', 'Quintuples'], index=1)
     values['number_to_include'] = st.slider("Number of Edges", min_value=1, max_value=50, step=1, value=50)
-    values['res_or_sens_checkboxes'] = st.multiselect("Secondary generated files (Res/Sens, Nostrains/Onlystrains):", 
-        ['Resistance + Nostrains', 'Resistance + Onlystrains', 'Sensitivity + Nostrains', 'Sensitivity + Onlystrains'])
+    values['res_or_sens_checkboxes'] = st.multiselect("Secondary generated files (Res/Sens, Isolates/Strains):", 
+        ['Resistance + Isolates', 'Resistance + Strains', 'Sensitivity + Isolates', 'Sensitivity + Strains'])
     values['filter_strength_checkboxes'] = st.multiselect("Secondary generated files (Selection Options):", 
         ['Doubles', 'Triples', 'Quadruples', 'Quintuples'])
     # New widget for secondary dataset naming:
-    values['secondary_dataset'] = st.selectbox("Secondary Dataset:", ['Nostrains', 'Onlystrains'], index=0)
+    values['secondary_dataset'] = st.selectbox("Secondary Dataset:", ['Isolates', 'Strains'], index=0)
     
     if st.button("Generate Files"):
         result_files = generate_files(values)

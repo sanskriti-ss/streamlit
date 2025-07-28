@@ -11,3 +11,4 @@ scikit-learn
 streamlit
 streamlit-option-menu
 tensorflow
+kaleido
