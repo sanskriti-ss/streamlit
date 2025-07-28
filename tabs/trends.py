@@ -11,7 +11,7 @@ def display(data_frames):
     st.title("Parallel Coordinates Plot for Genera Trends")
     st.write("Compare up to 5 genera across Production, Utilization, Resistance, and Sensitivity.")
 
-    ### Step 1: Store selections in session state to prevent it from running on it's own.
+    ### Step 1: store selections so it stops re-running on every change
     if "test_type" not in st.session_state:
         st.session_state.test_type = "Positively Tested"
     if "strain_option" not in st.session_state:
@@ -19,7 +19,7 @@ def display(data_frames):
     if "selected_genera" not in st.session_state:
         st.session_state.selected_genera = []
 
-    ### Step 2: User selections (prevent re-run on change)
+    ### Step 2: allowing use to select
     st.session_state.test_type = st.radio(
         "Choose Test Type:", ["Negatively Tested", "Positively Tested"],
         key="test_type_radio"
@@ -29,7 +29,7 @@ def display(data_frames):
         key="strain_option_radio"
     )
 
-    ### Step 3: Mapping selections to filenames
+    ### Step 3: mapping selections to file names
     test_type_short = "negatively" if st.session_state.test_type == "Negatively Tested" else "positively"
     strain_short = "nostrain" if st.session_state.strain_option == "Isolate" else "yesstrain"
     category_mapping = {
@@ -43,17 +43,11 @@ def display(data_frames):
         for category, short in category_mapping.items()
     }
 
-    ### Step 4: making sure all files exist in data
-    missing_files = [f for f in relevant_files.values() if f not in data_frames]
-    if missing_files:
-        st.error(f"Missing files: {missing_files}")
-        return
-
     # Step 5: Extract the genus names (assuming they exist in all files)
     sample_df = data_frames[relevant_files["Production"]]
     genus_list = sample_df["genus"].tolist()
 
-    # Step 6: Multi-selection for genera (up to 5) without triggering re-runs
+    # Step 6: Multi-selection for genera (up to 5)
     st.session_state.selected_genera = st.multiselect(
         "Search and Select Up to 5 Genera:",
         genus_list,
@@ -61,7 +55,7 @@ def display(data_frames):
         key="selected_genera_multiselect"
     )
 
-    ### Step 7: Add a button to start execution of the parallel coordinates plot
+    ### Step 7: parallel plot
     if st.button("Generate Parallel Coordinates Diagram"):
         genus_values = _compute_parallel_coordinates(data_frames, relevant_files, st.session_state.selected_genera)
         categories = ["Production", "Utilization", "Resistance", "Sensitivity"]
@@ -86,10 +80,10 @@ def display(data_frames):
 
     # --- Sankey Diagram Section ---
     st.markdown("---")
-    st.title("Sankey Diagram: Genus → Strains → Metabolite Testing")
-    st.write("Visualize how a genus splits into strains and how they are tested for a specific metabolite.")
+    st.title("Comprehensive Sankey Diagram: Genus → Strains → Categories → Test Results")
+    st.write("Visualize the complete flow: how a genus splits by strain status, then by metabolite categories (Production, Utilization, Resistance, Sensitivity), and finally by test results (Positive/Negative).")
 
-    # Step 1: Load metabolite list from file
+    # Step 1: load in metabolite list
     data_folder = "data_files"
     metabolite_file = os.path.join(data_folder, "step3_overall_unique_mets.txt")
 
@@ -100,47 +94,79 @@ def display(data_frames):
         st.error("Metabolite file not found!")
         metabolite_list = []
 
-    # Step 2: User selects a genus for Sankey (single selection)
+    # Step 2: select one genus
     selected_genus_sankey = st.selectbox("Select a Genus for Sankey Diagram:", genus_list, key="sankey_genus")
 
-    # Step 3: User selects a metabolite
+    # Step 3: select one metabolite
     selected_metabolite = st.selectbox("Select a Metabolite:", metabolite_list, key="sankey_metabolite")
 
-    # Step 4: Button to trigger Sankey plot generation
+    # Step 4: button for sankey
     if st.button("Generate Sankey Diagram"):
-        labels, sources, targets, values, link_colors = _compute_sankey_data(
+        labels, sources, targets, values, link_colors, debug_info = _compute_sankey_data(
             data_frames, relevant_files, selected_genus_sankey, selected_metabolite
         )
-
-        fig_sankey = go.Figure(go.Sankey(
-            node=dict(
-                pad=15, thickness=20, line=dict(color="black", width=0.5),
-                label=labels, color="#636363"
-            ),
-            link=dict(
-                source=sources, target=targets, value=values,
-                color=link_colors,
-                label=[f"{v} species" if v > 0 else "" for v in values]
+        # does data exist?
+        total_value = sum(values)
+        st.write(f"**Total flow value: {total_value}**")
+        
+        if total_value == 0:
+            st.warning(f"No data found for {selected_genus_sankey} and {selected_metabolite}. Please try a different combination.")
+            fig_sankey = None
+        else:
+            # Filter out zero values to clean up the diagram
+            filtered_sources = []
+            filtered_targets = []
+            filtered_values = []
+            filtered_colors = []
+            
+            for i, value in enumerate(values):
+                if value > 0:
+                    filtered_sources.append(sources[i])
+                    filtered_targets.append(targets[i])
+                    filtered_values.append(value)
+                    filtered_colors.append(link_colors[i])
+            
+            fig_sankey = go.Figure(go.Sankey(
+                node=dict(
+                    pad=15, thickness=20, line=dict(color="#000000", width=0.3),
+                    label=labels, color="#000000"
+                ),
+                link=dict(
+                    source=filtered_sources, target=filtered_targets, value=filtered_values,
+                    color=filtered_colors,
+                    label=[f"{v} specimens" if v > 0 else "" for v in filtered_values]
+                )
+            ))
+            fig_sankey.update_layout(
+                title_text=f"Comprehensive Sankey: {selected_genus_sankey} → {selected_metabolite}",
+                font=dict(
+                    family="Arial, sans-serif",
+                    size=12,
+                    color="#FFFFFF"
+                ),
+                height=600,
+                paper_bgcolor="#FAFAFA",
+                plot_bgcolor="#FAFAFA"
             )
-        ))
-        fig_sankey.update_layout(
-            title_text=f"Sankey Diagram for {selected_genus_sankey} → {selected_metabolite}",
-            font_size=12
-        )
 
-        st.plotly_chart(fig_sankey)
+            st.plotly_chart(fig_sankey, use_container_width=True)
 
-        #### download for the Sankey diagram as PNG
-        buffer = BytesIO()
-        fig_sankey.write_image(buffer, format="png")
-        buffer.seek(0)
+        # Download functionality - only show if diagram was created
+        if 'fig_sankey' in locals() and fig_sankey is not None:
+            try:
+                buffer = BytesIO()
+                fig_sankey.write_image(buffer, format="png")
+                buffer.seek(0)
 
-        st.download_button(
-            label="Download Sankey Diagram as PNG",
-            data=buffer,
-            file_name=f"Sankey_{selected_genus_sankey}_{selected_metabolite}.png",
-            mime="image/png"
-        )
+                st.download_button(
+                    label="Download Sankey Diagram as PNG",
+                    data=buffer,
+                    file_name=f"Comprehensive_Sankey_{selected_genus_sankey}_{selected_metabolite}.png",
+                    mime="image/png"
+                )
+            except Exception as e:
+                st.warning(f"Download feature temporarily unavailable: {str(e)}")
+                st.info("You can still right-click on the diagram and save it manually.")
 
 @st.cache_data
 def _compute_parallel_coordinates(data_frames, relevant_files, selected_genera):
@@ -168,47 +194,174 @@ def _compute_parallel_coordinates(data_frames, relevant_files, selected_genera):
 @st.cache_data
 def _compute_sankey_data(data_frames, relevant_files, selected_genus_sankey, selected_metabolite):
     """
-    Compute the values for the Sankey diagram.
+    Compute the values for the Sankey diagram with complete flow:
+    Genus → Strain Status → Category Type → Test Result
     """
-    strain_counts = {"Yes Strain": 0, "No Strain": 0}
-    test_counts = {
-        "Yes Strain → Positive": 0, "Yes Strain → Negative": 0,
-        "No Strain → Positive": 0, "No Strain → Negative": 0
+    
+    # Initialize data structure for the comprehensive flow
+    category_mapping = {
+        "Production": "prod",
+        "Utilization": "util",
+        "Resistance": "res",
+        "Sensitivity": "sen"
     }
+    
+    # Track counts for each flow path
+    strain_counts = {"Yes Strain": 0, "No Strain": 0}
+    category_counts = {}
+    test_counts = {}
+    debug_info = []
+    
+    # Initialize category and test count dictionaries
+    for strain in ["Yes Strain", "No Strain"]:
+        for category in category_mapping.keys():
+            category_key = f"{strain} → {category}"
+            category_counts[category_key] = 0
+            
+            for test_result in ["Positive", "Negative"]:
+                test_key = f"{strain} → {category} → {test_result}"
+                test_counts[test_key] = 0
 
+    # Process each file to collect data
     for strain_status in ["yesstrain", "nostrain"]:
-        for test_status in ["positively", "negatively"]:
-            file_name = f"step4_{test_status}_tested_by_genera_prod_{strain_status}.csv"
-            if file_name in data_frames:
-                df = data_frames[file_name]
-                genus_row = df[df["genus"] == selected_genus_sankey]
-                if not genus_row.empty:
-                    strain_key = "Yes Strain" if strain_status == "yesstrain" else "No Strain"
-                    strain_counts[strain_key] += genus_row.iloc[:, 1:].sum().sum()
-                    if selected_metabolite in df.columns:
-                        test_key = f"{'Yes Strain' if strain_status == 'yesstrain' else 'No Strain'} → {'Positive' if test_status == 'positively' else 'Negative'}"
-                        test_counts[test_key] += genus_row[selected_metabolite].sum()
+        strain_label = "Yes Strain" if strain_status == "yesstrain" else "No Strain"
+        
+        for category_name, category_short in category_mapping.items():
+            for test_status in ["positively", "negatively"]:
+                test_label = "Positive" if test_status == "positively" else "Negative"
+                
+                file_name = f"step4_{test_status}_tested_by_genera_{category_short}_{strain_status}.csv"
+                debug_info.append(f"Looking for file: {file_name}")
+                
+                if file_name in data_frames:
+                    df = data_frames[file_name]
+                    debug_info.append(f"  - File found with {len(df)} rows and {len(df.columns)} columns")
+                    
+                    # Find genus row
+                    genus_rows = df[df["genus"] == selected_genus_sankey]
+                    debug_info.append(f"  - Found {len(genus_rows)} rows for genus '{selected_genus_sankey}'")
+                    
+                    if not genus_rows.empty:
+                        # Check if metabolite exists (case-insensitive search)
+                        metabolite_cols = [col for col in df.columns if col.lower() == selected_metabolite.lower()]
+                        
+                        if metabolite_cols:
+                            metabolite_col = metabolite_cols[0]  # Use the first match
+                            metabolite_value = genus_rows[metabolite_col].iloc[0]
+                            debug_info.append(f"  - Found metabolite '{metabolite_col}' with value: {metabolite_value}")
+                            
+                            if pd.notna(metabolite_value) and metabolite_value > 0:
+                                value = int(metabolite_value)
+                                debug_info.append(f"  - Using value: {value}")
+                                
+                                # Add to strain totals
+                                strain_counts[strain_label] += value
+                                
+                                # Add to category totals
+                                category_key = f"{strain_label} → {category_name}"
+                                category_counts[category_key] += value
+                                
+                                # Add to test result totals
+                                test_key = f"{strain_label} → {category_name} → {test_label}"
+                                test_counts[test_key] += value
+                                
+                                debug_info.append(f"  - Added {value} to: {test_key}")
+                        else:
+                            # Show available metabolites for debugging
+                            available_mets = [col for col in df.columns if col not in ['genus', 'species_count']][:10]
+                            debug_info.append(f"  - Metabolite '{selected_metabolite}' not found. Available: {available_mets}...")
+                    else:
+                        available_genera = df['genus'].unique()[:10]
+                        debug_info.append(f"  - Genus not found. Available genera: {available_genera.tolist()}...")
+                else:
+                    debug_info.append(f"  - File not found in data_frames")
 
-    # Build Sankey diagram data
-    labels = ["Genus", "Yes Strain", "No Strain", "Positive Test", "Negative Test"]
-    sources = [0, 0, 1, 1, 2, 2]
+    debug_info.append(f"\nFinal strain counts: {strain_counts}")
+    debug_info.append(f"Final category counts: {category_counts}")
+    debug_info.append(f"Final test counts: {test_counts}")
 
-    targets = [1, 2, 3, 4, 3, 4]
-
-    def extract_numeric(value):
-        if isinstance(value, pd.Series):
-            return value.values[0] if len(value) == 1 else value.sum()
-        return value
-
-    values = [
-        extract_numeric(strain_counts["Yes Strain"]),
-        extract_numeric(strain_counts["No Strain"]),
-        extract_numeric(test_counts["Yes Strain → Positive"]),
-        extract_numeric(test_counts["Yes Strain → Negative"]),
-        extract_numeric(test_counts["No Strain → Positive"]),
-        extract_numeric(test_counts["No Strain → Negative"])
+    # Build comprehensive Sankey diagram with 4 levels
+    labels = [
+        # Level 0: Genus
+        selected_genus_sankey,  # 0
+        
+        # Level 1: Strain Status
+        "Yes Strain",          # 1
+        "No Strain",           # 2
+        
+        # Level 2: Categories (Yes Strain)
+        "YS Production",       # 3
+        "YS Utilization",      # 4  
+        "YS Resistance",       # 5
+        "YS Sensitivity",      # 6
+        
+        # Level 2: Categories (No Strain)  
+        "NS Production",       # 7
+        "NS Utilization",      # 8
+        "NS Resistance",       # 9
+        "NS Sensitivity",      # 10
+        
+        # Level 3: Test Results
+        "Positive Test",       # 11
+        "Negative Test"        # 12
     ]
-
-    link_colors = ["#4c72b0", "#55a868", "#c44e52", "#8172b2", "#937860", "#da8bc3"]
-
-    return labels, sources, targets, values, link_colors
+    
+    sources = []
+    targets = []
+    values = []
+    
+    # Level 0 → Level 1: Genus to Strain Status
+    sources.extend([0, 0])
+    targets.extend([1, 2])
+    values.extend([
+        strain_counts["Yes Strain"],
+        strain_counts["No Strain"]
+    ])
+    
+    # Level 1 → Level 2: Strain Status to Categories
+    # Yes Strain to categories
+    sources.extend([1, 1, 1, 1])
+    targets.extend([3, 4, 5, 6])
+    values.extend([
+        category_counts["Yes Strain → Production"],
+        category_counts["Yes Strain → Utilization"],
+        category_counts["Yes Strain → Resistance"],
+        category_counts["Yes Strain → Sensitivity"]
+    ])
+    
+    # No Strain to categories  
+    sources.extend([2, 2, 2, 2])
+    targets.extend([7, 8, 9, 10])
+    values.extend([
+        category_counts["No Strain → Production"],
+        category_counts["No Strain → Utilization"],
+        category_counts["No Strain → Resistance"],
+        category_counts["No Strain → Sensitivity"]
+    ])
+    
+    # Level 2 → Level 3: Categories to Test Results
+    category_indices = [3, 4, 5, 6, 7, 8, 9, 10]
+    category_names = ["Production", "Utilization", "Resistance", "Sensitivity"] * 2
+    strain_names = ["Yes Strain"] * 4 + ["No Strain"] * 4
+    
+    for i, (category_idx, category_name, strain_name) in enumerate(zip(category_indices, category_names, strain_names)):
+        # To Positive Test
+        sources.append(category_idx)
+        targets.append(11)
+        values.append(test_counts[f"{strain_name} → {category_name} → Positive"])
+        
+        # To Negative Test
+        sources.append(category_idx)
+        targets.append(12)
+        values.append(test_counts[f"{strain_name} → {category_name} → Negative"])
+    
+    # Color scheme
+    link_colors = (
+        ["#4c72b0", "#55a868"] +  # Genus to strain (blue, green)
+        ["#87ceeb"] * 4 +         # Yes strain to categories (light blue)
+        ["#90ee90"] * 4 +         # No strain to categories (light green)
+        ["#2ca02c"] * 8 +         # Categories to positive (bright green)
+        ["#d62728"] * 8           # Categories to negative (red)
+    )
+    
+    return labels, sources, targets, values, link_colors, debug_info
