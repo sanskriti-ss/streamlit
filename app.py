@@ -3,7 +3,7 @@ st.set_page_config(page_title="Visualizing BacDive")
 
 import os
 import pandas as pd
-from tabs import general_overview, circos, trends, cards, by_the_numbers, comparison
+from tabs import general_overview, circos, trends, cards2, by_the_numbers, comparison
 from utils.data_loader import load_data
 
 
@@ -27,7 +27,7 @@ elif tab == "Circos":
 elif tab == "Trends":
     trends.display(data_frames)
 elif tab == "Cards":
-    cards.display(data_frames)
+    cards2.display(data_frames)
 elif tab == "By the Numbers":
     by_the_numbers.display(data_frames)
 elif tab == "Comparison":
