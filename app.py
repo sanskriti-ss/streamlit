@@ -3,7 +3,7 @@ st.set_page_config(page_title="Visualizing BacDive")
 
 import os
 import pandas as pd
-from tabs import general_overview, circos, trends, cards2, by_the_numbers, comparison
+from tabs import general_overview, circos, trends, cards2, by_the_numbers, comparison, species_analysis
 from utils.data_loader import load_data
 
 
@@ -17,7 +17,7 @@ if data_frames:
 
 # Sidebar Navigation
 st.sidebar.title("Navigation")
-tab = st.sidebar.radio("Go to", ["General Overview", "Circos", "Trends", "Cards", "By the Numbers", "Comparison"])
+tab = st.sidebar.radio("Go to", ["General Overview", "Circos", "Trends", "Cards", "By the Numbers", "Comparison", "Species Analysis"])
 
 # Route to the correct tab
 if tab == "General Overview":
@@ -32,3 +32,5 @@ elif tab == "By the Numbers":
     by_the_numbers.display(data_frames)
 elif tab == "Comparison":
     comparison.display(data_frames)
+elif tab == "Species Analysis":
+    species_analysis.display(data_frames)
