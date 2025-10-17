@@ -108,7 +108,7 @@ def display(data_frames):
             with cols[j]:
                 with st.expander(genus):
                     # No Strains block
-                    st.write('**No Strain**')
+                    st.write('**Isolates**')
                     df_pn = data_frames.get('step4_positively_tested_by_genera_prod_nostrain.csv', pd.DataFrame())
                     r = df_pn[df_pn['genus']==genus]
                     sp_n = r['species_count'].iloc[0] if not r.empty else 'N/A'
@@ -129,7 +129,7 @@ def display(data_frames):
                     st.markdown("<hr style='margin:5px 0;'>", unsafe_allow_html=True)
 
                     # Yes Strains block
-                    st.write('**Yes Strain**')
+                    st.write('**Strains**')
                     df_py = data_frames.get('step4_positively_tested_by_genera_prod_yesstrain.csv', pd.DataFrame())
                     r2 = df_py[df_py['genus']==genus]
                     sp_y = r2['species_count'].iloc[0] if not r2.empty else 'N/A'
