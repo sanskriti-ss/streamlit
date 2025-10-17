@@ -10,10 +10,10 @@ from typing import Tuple, Dict, List
 
 ##### loading in our data files
 ##### need to replace if we get new files.
-df_pos_res_nostrain = pd.read_csv("data_files/step4_positively_tested_by_genera_res_nostrain.csv")
-df_pos_res_yesstrain = pd.read_csv("data_files/step4_positively_tested_by_genera_res_yesstrain.csv")
-df_pos_sen_nostrain = pd.read_csv("data_files/step4_positively_tested_by_genera_sen_nostrain.csv")
-df_pos_sen_yesstrain = pd.read_csv("data_files/step4_positively_tested_by_genera_sen_yesstrain.csv")
+df_pos_res_isolate = pd.read_csv("data_files/step4_positively_tested_by_genera_res_isolate.csv")
+df_pos_res_strain = pd.read_csv("data_files/step4_positively_tested_by_genera_res_strain.csv")
+df_pos_sen_isolate = pd.read_csv("data_files/step4_positively_tested_by_genera_sen_isolate.csv")
+df_pos_sen_strain = pd.read_csv("data_files/step4_positively_tested_by_genera_sen_strain.csv")
 
 @st.cache_data
 
@@ -356,10 +356,10 @@ def generate_secondary_files(
     result_files = {}
 
     secondary_df_map = {
-        'Resistance + Isolates': df_pos_res_nostrain,
-        'Resistance + Strains': df_pos_res_yesstrain,
-        'Sensitivity + Isolates': df_pos_sen_nostrain,
-        'Sensitivity + Strains': df_pos_sen_yesstrain
+        'Resistance + Isolates': df_pos_res_isolate,
+        'Resistance + Strains': df_pos_res_strain,
+        'Sensitivity + Isolates': df_pos_sen_isolate,
+        'Sensitivity + Strains': df_pos_sen_strain
     }
 
     # We'll iterate over each secondary dataset the user selected
@@ -461,7 +461,7 @@ def generate_edges_file(primary_data_file, txt_file_name, values):
     ]
 
     # Decide the line_format for primary data
-    if values['res_or_sens'] in ['Resistance + Nostrains', 'Resistance + Onlystrains']:
+    if values['res_or_sens'] in ['Resistance + Isolates', 'Resistance + Strains']:
         line_format = 'black'
     else:
         line_format = 'black'
@@ -540,10 +540,10 @@ def crop_df(values, df):
 def generate_files(values):
     # based on dropdown selection, first creating the map, selecting it
     res_or_sens_map = {
-    'Resistance + Isolates': ('res_1strain', df_pos_res_nostrain),
-    'Resistance + Strains': ('res_0strain',  df_pos_res_yesstrain),
-    'Sensitivity + Isolates':  ('sen_1strain',  df_pos_sen_nostrain),
-    'Sensitivity + Strains': ('sen_0strain', df_pos_sen_yesstrain)
+    'Resistance + Isolates': ('res_1strain', df_pos_res_isolate),
+    'Resistance + Strains': ('res_0strain',  df_pos_res_strain),
+    'Sensitivity + Isolates':  ('sen_1strain',  df_pos_sen_isolate),
+    'Sensitivity + Strains': ('sen_0strain', df_pos_sen_strain)
     }
 
     # determining file name for edge_file

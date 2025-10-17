@@ -11,10 +11,10 @@ import random
 
 ##### loading in our data files
 ##### need to replace if we get new files.
-df_pos_res_nostrain = pd.read_csv("data_files/step4_positively_tested_by_genera_res_nostrain.csv")
-df_pos_res_yesstrain = pd.read_csv("data_files/step4_positively_tested_by_genera_res_yesstrain.csv")
-df_pos_sen_nostrain = pd.read_csv("data_files/step4_positively_tested_by_genera_sen_nostrain.csv")
-df_pos_sen_yesstrain = pd.read_csv("data_files/step4_positively_tested_by_genera_sen_yesstrain.csv")
+df_pos_res_isolate = pd.read_csv("data_files/step4_positively_tested_by_genera_res_isolate.csv")
+df_pos_res_strain = pd.read_csv("data_files/step4_positively_tested_by_genera_res_strain.csv")
+df_pos_sen_isolate = pd.read_csv("data_files/step4_positively_tested_by_genera_sen_isolate.csv")
+df_pos_sen_strain = pd.read_csv("data_files/step4_positively_tested_by_genera_sen_strain.csv")
 
 @st.cache_data
 
@@ -34,7 +34,7 @@ def display(data_frames):
 
     # 1) Choose strain
     strain_option = st.radio("Strain Option", ["Isolates","Strains"])
-    suffix = "nostrain" if strain_option=="Isolates" else "yesstrain"
+    suffix = "isolate" if strain_option=="Isolates" else "strain"
     dfs = load_category_data(suffix)
 
     # 2) Genus selector

@@ -46,8 +46,8 @@ def render_shape(count, rank, type_key, width=80, height=80):
 
 # Cached helper to compute genus ranking
 @st.cache_data
-def get_genus_ranking(data_frames, strain_option='No Strains'):
-    prod_key = f"step4_positively_tested_by_genera_prod_{'nostrain' if strain_option=='No Strains' else 'yesstrain'}.csv"
+def get_genus_ranking(data_frames, strain_option='Isolate'):
+    prod_key = f"step4_positively_tested_by_genera_prod_{'isolate' if strain_option=='Isolate' else 'strain'}.csv"
     if prod_key not in data_frames:
         return {}
     df = data_frames[prod_key]
@@ -60,12 +60,12 @@ def get_genus_ranking(data_frames, strain_option='No Strains'):
     return dict(zip(ranking['genus'], ranking['rank']))
 
 # Cached helper to compute unique metabolite rankings
-def get_unique_mets_ranking(data_frames, cat, strain_option='No Strains'):
+def get_unique_mets_ranking(data_frames, cat, strain_option='Isolate'):
     cat_map = {'Production':'prod','Utilization':'util','Resistance':'res','Sensitivity':'sen'}
     if cat not in cat_map:
         return {}
     key = cat_map[cat]
-    file_key = f"step4_positively_tested_by_genera_{key}_{'nostrain' if strain_option=='No Strains' else 'yesstrain'}.csv"
+    file_key = f"step4_positively_tested_by_genera_{key}_{'isolate' if strain_option=='Isolate' else 'strain'}.csv"
     if file_key not in data_frames:
         return {}
     df = data_frames[file_key].copy()
@@ -85,7 +85,7 @@ def display(data_frames):
     st.header('Cards')
     st.write('Click on a card below to view details for each genus.')
 
-    base_key = next((f for f in data_frames if 'nostrain' in f), None)
+    base_key = next((f for f in data_frames if 'isolate' in f), None)
     if not base_key:
         st.error('No data available for cards.')
         return
@@ -93,10 +93,10 @@ def display(data_frames):
     genera = sorted(df_base['genus'].unique())
 
     # Compute rankings
-    species_no = get_genus_ranking(data_frames, 'No Strains')
-    species_yes = get_genus_ranking(data_frames, 'Yes Strains')
-    unique_no = {cat: get_unique_mets_ranking(data_frames, cat, 'No Strains') for cat in ['Production','Utilization','Resistance','Sensitivity']}
-    unique_yes = {cat: get_unique_mets_ranking(data_frames, cat, 'Yes Strains') for cat in ['Production','Utilization','Resistance','Sensitivity']}
+    species_no = get_genus_ranking(data_frames, 'Isolate')
+    species_yes = get_genus_ranking(data_frames, 'Strain')
+    unique_no = {cat: get_unique_mets_ranking(data_frames, cat, 'Isolate') for cat in ['Production','Utilization','Resistance','Sensitivity']}
+    unique_yes = {cat: get_unique_mets_ranking(data_frames, cat, 'Strain') for cat in ['Production','Utilization','Resistance','Sensitivity']}
 
     cat_map = {'Production':'prod','Utilization':'util','Resistance':'res','Sensitivity':'sen'}
 
@@ -107,9 +107,9 @@ def display(data_frames):
         for j, genus in enumerate(genera[i:i+cols_per_row]):
             with cols[j]:
                 with st.expander(genus):
-                    # No Strains block
+                    # Isolate block
                     st.write('**Isolates**')
-                    df_pn = data_frames.get('step4_positively_tested_by_genera_prod_nostrain.csv', pd.DataFrame())
+                    df_pn = data_frames.get('step4_positively_tested_by_genera_prod_isolate.csv', pd.DataFrame())
                     r = df_pn[df_pn['genus']==genus]
                     sp_n = r['species_count'].iloc[0] if not r.empty else 'N/A'
                     rk_n = species_no.get(genus, 'N/A')
@@ -120,7 +120,7 @@ def display(data_frames):
                         key = cat_map[cat]
                         grp = g1[idx] if idx<2 else g2[idx-2]
                         with grp:
-                            df_c = data_frames.get(f'step4_positively_tested_by_genera_{key}_nostrain.csv', pd.DataFrame())
+                            df_c = data_frames.get(f'step4_positively_tested_by_genera_{key}_isolate.csv', pd.DataFrame())
                             rc = df_c[df_c['genus']==genus]
                             uc = (rc[rc.columns.difference(['genus','species_count'])]>0).sum(axis=1).iloc[0] if not rc.empty else 0
                             rv = unique_no[cat].get(genus, '')
@@ -130,7 +130,7 @@ def display(data_frames):
 
                     # Yes Strains block
                     st.write('**Strains**')
-                    df_py = data_frames.get('step4_positively_tested_by_genera_prod_yesstrain.csv', pd.DataFrame())
+                    df_py = data_frames.get('step4_positively_tested_by_genera_prod_strain.csv', pd.DataFrame())
                     r2 = df_py[df_py['genus']==genus]
                     sp_y = r2['species_count'].iloc[0] if not r2.empty else 'N/A'
                     rk_y = species_yes.get(genus, 'N/A')
@@ -141,7 +141,7 @@ def display(data_frames):
                         key = cat_map[cat]
                         grp = g1[idx] if idx<2 else g2[idx-2]
                         with grp:
-                            df_c = data_frames.get(f'step4_positively_tested_by_genera_{key}_yesstrain.csv', pd.DataFrame())
+                            df_c = data_frames.get(f'step4_positively_tested_by_genera_{key}_strain.csv', pd.DataFrame())
                             rc = df_c[df_c['genus']==genus]
                             uc = (rc[rc.columns.difference(['genus','species_count'])]>0).sum(axis=1).iloc[0] if not rc.empty else 0
                             rv = unique_yes[cat].get(genus, '')

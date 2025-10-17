@@ -31,7 +31,7 @@ def display(data_frames):
 
     ### Step 3: mapping selections to file names
     test_type_short = "negatively" if st.session_state.test_type == "Negatively Tested" else "positively"
-    strain_short = "nostrain" if st.session_state.strain_option == "Isolate" else "yesstrain"
+    strain_short = "isolate" if st.session_state.strain_option == "Isolate" else "strain"
     category_mapping = {
         "Production": "prod",
         "Utilization": "util",
@@ -207,13 +207,13 @@ def _compute_sankey_data(data_frames, relevant_files, selected_genus_sankey, sel
     }
     
     # Track counts for each flow path
-    strain_counts = {"Yes Strain": 0, "No Strain": 0}
+    strain_counts = {"Strain": 0, "Isolate": 0}
     category_counts = {}
     test_counts = {}
     debug_info = []
     
     # Initialize category and test count dictionaries
-    for strain in ["Yes Strain", "No Strain"]:
+    for strain in ["Strain", "Isolate"]:
         for category in category_mapping.keys():
             category_key = f"{strain} → {category}"
             category_counts[category_key] = 0
@@ -223,8 +223,8 @@ def _compute_sankey_data(data_frames, relevant_files, selected_genus_sankey, sel
                 test_counts[test_key] = 0
 
     # Process each file to collect data
-    for strain_status in ["yesstrain", "nostrain"]:
-        strain_label = "Yes Strain" if strain_status == "yesstrain" else "No Strain"
+    for strain_status in ["strain", "isolate"]:
+        strain_label = "Strain" if strain_status == "strain" else "Isolate"
         
         for category_name, category_short in category_mapping.items():
             for test_status in ["positively", "negatively"]:
@@ -286,16 +286,16 @@ def _compute_sankey_data(data_frames, relevant_files, selected_genus_sankey, sel
         selected_genus_sankey,  # 0
         
         # Level 1: Strain Status
-        "Yes Strain",          # 1
-        "No Strain",           # 2
+        "Strain",          # 1
+        "Isolate",           # 2
         
-        # Level 2: Categories (Yes Strain)
+        # Level 2: Categories (Strain)
         "YS Production",       # 3
         "YS Utilization",      # 4  
         "YS Resistance",       # 5
         "YS Sensitivity",      # 6
         
-        # Level 2: Categories (No Strain)  
+        # Level 2: Categories (Isoalte)  
         "NS Production",       # 7
         "NS Utilization",      # 8
         "NS Resistance",       # 9
@@ -314,8 +314,8 @@ def _compute_sankey_data(data_frames, relevant_files, selected_genus_sankey, sel
     sources.extend([0, 0])
     targets.extend([1, 2])
     values.extend([
-        strain_counts["Yes Strain"],
-        strain_counts["No Strain"]
+        strain_counts["Strain"],
+        strain_counts["Isolate"]
     ])
     
     # Level 1 → Level 2: Strain Status to Categories
@@ -323,27 +323,27 @@ def _compute_sankey_data(data_frames, relevant_files, selected_genus_sankey, sel
     sources.extend([1, 1, 1, 1])
     targets.extend([3, 4, 5, 6])
     values.extend([
-        category_counts["Yes Strain → Production"],
-        category_counts["Yes Strain → Utilization"],
-        category_counts["Yes Strain → Resistance"],
-        category_counts["Yes Strain → Sensitivity"]
+        category_counts["Strain → Production"],
+        category_counts["Strain → Utilization"],
+        category_counts["Strain → Resistance"],
+        category_counts["Strain → Sensitivity"]
     ])
-    
-    # No Strain to categories  
+
+    # Isolate to categories
     sources.extend([2, 2, 2, 2])
     targets.extend([7, 8, 9, 10])
     values.extend([
-        category_counts["No Strain → Production"],
-        category_counts["No Strain → Utilization"],
-        category_counts["No Strain → Resistance"],
-        category_counts["No Strain → Sensitivity"]
+        category_counts["Isolate → Production"],
+        category_counts["Isolate → Utilization"],
+        category_counts["Isolate → Resistance"],
+        category_counts["Isolate → Sensitivity"]
     ])
     
     # Level 2 → Level 3: Categories to Test Results
     category_indices = [3, 4, 5, 6, 7, 8, 9, 10]
     category_names = ["Production", "Utilization", "Resistance", "Sensitivity"] * 2
-    strain_names = ["Yes Strain"] * 4 + ["No Strain"] * 4
-    
+    strain_names = ["Strain"] * 4 + ["Isolate"] * 4
+
     for i, (category_idx, category_name, strain_name) in enumerate(zip(category_indices, category_names, strain_names)):
         # To Positive Test
         sources.append(category_idx)
@@ -358,8 +358,8 @@ def _compute_sankey_data(data_frames, relevant_files, selected_genus_sankey, sel
     # Color scheme
     link_colors = (
         ["#4c72b0", "#55a868"] +  # Genus to strain (blue, green)
-        ["#87ceeb"] * 4 +         # Yes strain to categories (light blue)
-        ["#90ee90"] * 4 +         # No strain to categories (light green)
+        ["#87ceeb"] * 4 +         # Strain to categories (light blue)
+        ["#90ee90"] * 4 +         # Isolate to categories (light green)
         ["#2ca02c"] * 8 +         # Categories to positive (bright green)
         ["#d62728"] * 8           # Categories to negative (red)
     )
