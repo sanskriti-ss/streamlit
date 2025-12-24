@@ -121,7 +121,7 @@ def calculate_species_stats(df: pd.DataFrame, activity_type: str = "utilization"
         return None
     
 
-    # Process data - don't convert -1 to 0 for resistance/sensitivity data
+    # Process data - remember don't convert -1 to 0 for resistance/sensitivity data
     df_processed = df.copy()
     
     # Only clip values for production/utilization data
@@ -130,10 +130,10 @@ def calculate_species_stats(df: pd.DataFrame, activity_type: str = "utilization"
         for col in metabolite_cols:
             df_processed[col] = df_processed[col].replace(-1, 0).clip(0, 1)
     # For resistance/sensitivity data, keep -1 values as they represent negative test results
-    
+
     # Calculate statistics
     stats_list = []
-    
+
     # Determine appropriate column names based on activity type
     if 'res' in activity_type.lower() or 'resistance' in activity_type.lower():
         activity_col = 'metabolites_resistant'
@@ -151,73 +151,51 @@ def calculate_species_stats(df: pd.DataFrame, activity_type: str = "utilization"
         activity_col = 'metabolites_utilized'
         rate_col = 'utilization_rate'
         activity_name = 'utilized'
-    
+
     for _, row in df_processed.iterrows():
-        # Handle different activity types with appropriate value counting
+        # Count positives and tested based on activity type
         if 'res' in activity_type.lower() or 'resistance' in activity_type.lower():
-            # For resistance: count -1 as resistant (positive activity)
-            metabolites_with_activity = sum([1 for col in metabolite_cols if pd.notna(row[col]) and row[col] == -1])
+            # 1 = resistant; tested = {1, -1}
+            metabolites_with_activity = sum(1 for col in metabolite_cols if pd.notna(row[col]) and row[col] == 1)
+            metabolites_tested = sum(1 for col in metabolite_cols if pd.notna(row[col]) and row[col] in (1, -1))
         elif 'sen' in activity_type.lower() or 'sensitivity' in activity_type.lower():
-            # For sensitivity: count 1 as sensitive (positive activity)
-            metabolites_with_activity = sum([1 for col in metabolite_cols if pd.notna(row[col]) and row[col] == 1])
-        else:  # production, utilization, or default
-            # For production/utilization: count 1 as positive activity
-            metabolites_with_activity = sum([1 for col in metabolite_cols if pd.notna(row[col]) and row[col] == 1])
-        
-        # Count total metabolites tested (both 1 and -1 represent test results)
-        metabolites_tested = sum([1 for col in metabolite_cols if pd.notna(row[col]) and row[col] in [1, -1]])
-        
-        total_metabolites = len(metabolite_cols)
-        # Use metabolites_tested for rate calculation instead of total_metabolites
+            # 1 = sensitive; tested = {1, -1}
+            metabolites_with_activity = sum(1 for col in metabolite_cols if pd.notna(row[col]) and row[col] == 1)
+            metabolites_tested = sum(1 for col in metabolite_cols if pd.notna(row[col]) and row[col] in (1, -1))
+        else:
+            # production/utilization: 1 = positive; tested = any non-NaN (counts 0 and 1)
+            metabolites_with_activity = sum(1 for col in metabolite_cols if pd.notna(row[col]) and row[col] == 1)
+            metabolites_tested = sum(1 for col in metabolite_cols if pd.notna(row[col]))
+
+        # Rate uses metabolites_tested (prevents 100% when zeros exist)
         activity_rate = (metabolites_with_activity / metabolites_tested * 100) if metabolites_tested > 0 else 0
-        
-        # Handle strain information - 'no' means it IS a strain, 'yes' means it's a type strain
+
+        # Strain/type_strain mapping (unchanged, but normalized)
         strain_info = 'unknown'
         if 'type_strain' in df_processed.columns and pd.notna(row['type_strain']):
-            if row['type_strain'] == 'yes':
+            ts = str(row['type_strain']).strip().lower()
+            if ts == 'yes':
                 strain_info = 'Type Strain'
-            elif row['type_strain'] == 'no':
+            elif ts == 'no':
                 strain_info = 'Strain'
             else:
                 strain_info = str(row['type_strain'])
-        elif 'is_strain' in df_processed.columns and pd.notna(row['is_strain']):
-            # Convert is_strain (0=isolate, 1=strain) to readable format
+        elif 'is_strain' in df_processed.columns and pd.notna(row.get('is_strain')):
             strain_info = 'Strain' if row['is_strain'] == 1 else 'Isolate'
-        
-        # Handle species, genus, order, BacID - use direct column access
-        species = row['species'] if 'species' in df_processed.columns and pd.notna(row['species']) else 'Unknown Species'
-        genus = row['genus'] if 'genus' in df_processed.columns and pd.notna(row['genus']) else 'Unknown Genus'
-        order = row['order'] if 'order' in df_processed.columns and pd.notna(row['order']) else 'Unknown Order'
-        bacid = row['BacID'] if 'BacID' in df_processed.columns and pd.notna(row['BacID']) else 'Unknown'
-        
-        # Debug: Print info for first few rows to see what's happening
-        if len(stats_list) < 3:
-            print(f"DEBUG Row {len(stats_list)}: Raw species='{row.get('species', 'NOT_FOUND')}', Raw BacID='{row.get('BacID', 'NOT_FOUND')}'")
-            print(f"DEBUG Row {len(stats_list)}: Processed species='{species}', BacID='{bacid}', genus='{genus}', order='{order}'")
-            print(f"DEBUG Row {len(stats_list)}: Available columns in this row: {list(row.index)}")
-        
-        # Create species identifier with BacID
-        species_with_id = f"{species} (ID: {bacid})"
-        
-        stats_dict = {
-            'BacID': bacid,
-            'species': species,
-            'species_with_id': species_with_id,
-            'genus': genus,
-            'order': order,
+
+        stats_list.append({
+            'BacID': row.get('BacID'),
+            'species': row.get('species'),
+            'species_with_id': f"{row.get('species')} (ID: {row.get('BacID')})" if 'BacID' in df_processed.columns else row.get('species'),
+            'genus': row.get('genus'),
+            'order': row.get('order'),
             'type_strain': strain_info,
             activity_col: metabolites_with_activity,
             'metabolites_tested': metabolites_tested,
-            'total_metabolites': total_metabolites,
+            'total_metabolites': len(metabolite_cols),  # keep for reference; don’t use for rate
             rate_col: activity_rate,
-            'activity_type': activity_type
-        }
-        
-        # Also include the standard 'metabolites_utilized' for backward compatibility
-        stats_dict['metabolites_utilized'] = metabolites_with_activity
-        stats_dict['utilization_rate'] = activity_rate
-        
-        stats_list.append(stats_dict)
+            'activity_type': activity_type.capitalize()
+        })
     
     return pd.DataFrame(stats_list)
 

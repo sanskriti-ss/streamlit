@@ -1,0 +1,3 @@
+total_metabolites is still len(metabolite_cols) (same for all species). That’s ok for reference but not used for rate — rates use metabolites_tested (good). However get_top_species_across_files uses total_metabolites in overall_utilization_rate; you may want to use aggregated metabolites_tested instead.
+
+Performance: the function iterates with iterrows over large dataframes (34k x ~1.5k cols) — expect slow execution; vectorized implementation would be much faster.
