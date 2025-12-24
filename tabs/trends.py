@@ -83,6 +83,13 @@ def display(data_frames):
     st.title("Comprehensive Sankey Diagram: Genus → Strains → Categories → Test Results")
     st.write("Visualize the complete flow: how a genus splits by strain status, then by metabolite categories (Production, Utilization, Resistance, Sensitivity), and finally by test results (Positive/Negative).")
 
+    # Checkbox for filtering (default unchecked)
+    filter_enabled = st.checkbox(
+        "Only show non-zero genus-metabolite combinations",
+        value=False,
+        help="Check this to filter the dropdowns to only show genus/metabolite pairs that have actual test data."
+    )
+
     # Step 1: load in metabolite list
     data_folder = "data_files"
     metabolite_file = os.path.join(data_folder, "step3_overall_unique_mets.txt")
@@ -94,11 +101,110 @@ def display(data_frames):
         st.error("Metabolite file not found!")
         metabolite_list = []
 
-    # Step 2: select one genus
-    selected_genus_sankey = st.selectbox("Select a Genus for Sankey Diagram:", genus_list, key="sankey_genus")
+    # Step 2: If filtering is enabled, build index and filter options
+    if filter_enabled:
+        # Import the functions from species_analysis
+        import sys
+        sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+        from tabs.species_analysis import load_all_activity_dfs, build_genus_metabolite_index, build_metabolite_genus_index, get_filtered_options
+        
+        with st.spinner("Loading activity files and building index..."):
+            activity_dfs = load_all_activity_dfs()
+            
+            # Check if any files loaded
+            loaded_count = sum(1 for v in activity_dfs.values() if v is not None)
+            if loaded_count == 0:
+                st.error("No activity files found in species_data folder.")
+                return
+            
+            # Create a hash for cache invalidation
+            dfs_hash = str(hash(tuple(k for k, v in activity_dfs.items() if v is not None)))
+            
+            # Build indices
+            genus_index = build_genus_metabolite_index(dfs_hash, activity_dfs)
+            metabolite_index = build_metabolite_genus_index(dfs_hash, activity_dfs)
+        
+        if not genus_index:
+            st.warning("No genus-metabolite data found.")
+            return
+        
+        # Use session state to track selections
+        if 'sankey_genus_filtered' not in st.session_state:
+            st.session_state.sankey_genus_filtered = "-- choose --"
+        if 'sankey_metabolite_filtered' not in st.session_state:
+            st.session_state.sankey_metabolite_filtered = "-- choose --"
+        
+        # Get filtered options
+        filtered_genera, filtered_metabolites = get_filtered_options(
+            genus_index,
+            metabolite_index,
+            st.session_state.sankey_genus_filtered,
+            st.session_state.sankey_metabolite_filtered
+        )
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            genus_options = ["-- choose --"] + filtered_genera
+            # Get current value from session state
+            current_genus_idx = 0
+            if st.session_state.sankey_genus_filtered in genus_options:
+                current_genus_idx = genus_options.index(st.session_state.sankey_genus_filtered)
+            
+            selected_genus_sankey = st.selectbox(
+                "Select a Genus for Sankey Diagram:",
+                genus_options,
+                index=current_genus_idx,
+                key="sankey_genus_filtered_select"
+            )
+            
+            # Update session state if changed
+            if selected_genus_sankey != st.session_state.sankey_genus_filtered:
+                st.session_state.sankey_genus_filtered = selected_genus_sankey
+                # Reset metabolite if genus changed
+                if selected_genus_sankey != "-- choose --":
+                    valid_metabolites = genus_index.get(selected_genus_sankey, set())
+                    if st.session_state.sankey_metabolite_filtered not in valid_metabolites:
+                        st.session_state.sankey_metabolite_filtered = "-- choose --"
+        
+        with col2:
+            if selected_genus_sankey and selected_genus_sankey != "-- choose --":
+                metabolite_options = ["-- choose --"] + sorted(genus_index.get(selected_genus_sankey, []))
+            else:
+                metabolite_options = ["-- choose --"] + filtered_metabolites
+            
+            # Get current value from session state
+            current_met_idx = 0
+            if st.session_state.sankey_metabolite_filtered in metabolite_options:
+                current_met_idx = metabolite_options.index(st.session_state.sankey_metabolite_filtered)
+            
+            selected_metabolite = st.selectbox(
+                "Select a Metabolite:",
+                metabolite_options,
+                index=current_met_idx,
+                key="sankey_metabolite_filtered_select"
+            )
+            
+            # Update session state if changed
+            if selected_metabolite != st.session_state.sankey_metabolite_filtered:
+                st.session_state.sankey_metabolite_filtered = selected_metabolite
+        
+        # Show info
+        if selected_genus_sankey != "-- choose --":
+            metabolite_count = len(genus_index.get(selected_genus_sankey, []))
+            st.info(f"{selected_genus_sankey} has test data for {metabolite_count} metabolites across all activity types.")
+        
+        # Show message if not both selected, but don't return - continue to button
+        if selected_genus_sankey == "-- choose --" or selected_metabolite == "-- choose --":
+            if selected_genus_sankey != "-- choose --" or selected_metabolite != "-- choose --":
+                st.info("Please select both a genus and a metabolite to generate the diagram.")
+    else:
+        # Unfiltered mode - original behavior
+        # Step 2: select one genus
+        selected_genus_sankey = st.selectbox("Select a Genus for Sankey Diagram:", genus_list, key="sankey_genus")
 
-    # Step 3: select one metabolite
-    selected_metabolite = st.selectbox("Select a Metabolite:", metabolite_list, key="sankey_metabolite")
+        # Step 3: select one metabolite
+        selected_metabolite = st.selectbox("Select a Metabolite:", metabolite_list, key="sankey_metabolite")
 
     # Step 4: button for sankey
     if st.button("Generate Sankey Diagram"):
@@ -128,21 +234,34 @@ def display(data_frames):
             
             fig_sankey = go.Figure(go.Sankey(
                 node=dict(
-                    pad=15, thickness=20, line=dict(color="#000000", width=0.3),
-                    label=labels, color="#000000"
+                    pad=15, 
+                    thickness=20, 
+                    line=dict(color="#000000", width=0.5),
+                    label=labels, 
+                    color="#4A4A4A"
                 ),
                 link=dict(
                     source=filtered_sources, target=filtered_targets, value=filtered_values,
                     color=filtered_colors,
                     label=[f"{v} specimens" if v > 0 else "" for v in filtered_values]
+                ),
+                textfont=dict(
+                    family="Arial, sans-serif",
+                    size=18,
+                    color="#FFFFFF"
                 )
             ))
             fig_sankey.update_layout(
                 title_text=f"Comprehensive Sankey: {selected_genus_sankey} → {selected_metabolite}",
+                title_font=dict(
+                    family="Arial, sans-serif",
+                    size=20,
+                    color="#000000"
+                ),
                 font=dict(
                     family="Arial, sans-serif",
-                    size=12,
-                    color="#FFFFFF"
+                    size=18,
+                    color="#000000"
                 ),
                 height=600,
                 paper_bgcolor="#FAFAFA",

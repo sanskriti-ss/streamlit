@@ -10,6 +10,8 @@ from plotly.subplots import make_subplots
 import zipfile
 import io
 import numpy as np
+import os
+from typing import Dict, List, Optional, Set
 from utils.species_utils import (
     load_species_data_from_path, 
     calculate_species_stats, 
@@ -21,6 +23,150 @@ from utils.species_utils import (
 ##########################################################
 ### Helper Functions
 ##########################################################
+
+##########################################################
+### Cached Functions for Filtered Selectboxes
+##########################################################
+
+@st.cache_data(show_spinner="Loading activity files...")
+def load_all_activity_dfs() -> Dict[str, pd.DataFrame]:
+    """
+    Load all 4 activity dataframes from species_data folder.
+    Returns dict: {'production': df, 'utilization': df, 'resistance': df, 'sensitivity': df}
+    """
+    species_folder = "species_data"
+    activity_file_map = {
+        'production': os.path.join(species_folder, "step3_met_prod_exploded.csv.zip"),
+        'utilization': os.path.join(species_folder, "step3_met_util_exploded.csv.zip"),
+        'resistance': os.path.join(species_folder, "step3_met_res_exploded.csv.zip"),
+        'sensitivity': os.path.join(species_folder, "step3_met_sen_exploded.csv.zip")
+    }
+    
+    dfs = {}
+    for activity, path in activity_file_map.items():
+        if os.path.exists(path):
+            try:
+                dfs[activity] = load_species_data_from_path(path)
+            except Exception as e:
+                st.warning(f"Could not load {activity} file: {e}")
+                dfs[activity] = None
+        else:
+            dfs[activity] = None
+    return dfs
+
+
+@st.cache_data(show_spinner="Building genus-metabolite index...")
+def build_genus_metabolite_index(_dfs_hash: str, dfs: Dict[str, pd.DataFrame]) -> Dict[str, Set[str]]:
+    """
+    Build genus -> set(metabolites) where there is any non-zero value
+    across any activity dataframe. Vectorized for speed.
+    
+    _dfs_hash is used for cache invalidation (pass a hash of file paths or timestamps).
+    """
+    genus_index = {}
+    
+    for activity, df in dfs.items():
+        if df is None or df.empty:
+            continue
+        
+        # Detect metadata cols
+        metadata_cols = ['BacID', 'species', 'genus', 'order', 'type_strain', 'is_strain', 'species_with_id']
+        metabolite_cols = [c for c in df.columns if c not in metadata_cols]
+        
+        if not metabolite_cols or 'genus' not in df.columns:
+            continue
+        
+        # Vectorized: tested = non-NaN and not-equal-to-0 (counts 1 and -1)
+        metabolite_df = df[metabolite_cols]
+        tested = metabolite_df.notna() & (metabolite_df != 0)
+        tested_with_genus = tested.copy()
+        tested_with_genus['genus'] = df['genus'].fillna('Unknown')
+        
+        # Group by genus and check if any strain has nonzero for each metabolite
+        grp = tested_with_genus.groupby('genus').any()
+        
+        for genus in grp.index:
+            # Get metabolite columns where at least one strain has nonzero
+            cols_true = set(grp.columns[grp.loc[genus].values])
+            genus_index.setdefault(genus, set()).update(cols_true)
+    
+    return genus_index
+
+
+@st.cache_data(show_spinner="Building metabolite-genus index...")
+def build_metabolite_genus_index(_dfs_hash: str, dfs: Dict[str, pd.DataFrame]) -> Dict[str, Set[str]]:
+    """
+    Build metabolite -> set(genera) where there is any non-zero value.
+    This is the reverse index for filtering genera after metabolite selection.
+    """
+    metabolite_index = {}
+    
+    for activity, df in dfs.items():
+        if df is None or df.empty:
+            continue
+        
+        metadata_cols = ['BacID', 'species', 'genus', 'order', 'type_strain', 'is_strain', 'species_with_id']
+        metabolite_cols = [c for c in df.columns if c not in metadata_cols]
+        
+        if not metabolite_cols or 'genus' not in df.columns:
+            continue
+        
+        # For each metabolite, find genera with nonzero values
+        for met in metabolite_cols:
+            if met not in df.columns:
+                continue
+            # Get rows where metabolite is nonzero
+            mask = df[met].notna() & (df[met] != 0)
+            genera_with_data = set(df.loc[mask, 'genus'].dropna().unique())
+            metabolite_index.setdefault(met, set()).update(genera_with_data)
+    
+    return metabolite_index
+
+
+def get_filtered_options(
+    genus_index: Dict[str, Set[str]],
+    metabolite_index: Dict[str, Set[str]],
+    selected_genus: Optional[str] = None,
+    selected_metabolite: Optional[str] = None
+) -> tuple:
+    """
+    Get filtered genus and metabolite lists based on current selections.
+    
+    Returns: (genus_list, metabolite_list)
+    """
+    all_genera = sorted(genus_index.keys())
+    all_metabolites = sorted(set().union(*genus_index.values())) if genus_index else []
+    
+    # Filter metabolites based on selected genus
+    if selected_genus and selected_genus != "-- choose --":
+        filtered_metabolites = sorted(genus_index.get(selected_genus, []))
+    else:
+        filtered_metabolites = all_metabolites
+    
+    # Filter genera based on selected metabolite
+    if selected_metabolite and selected_metabolite != "-- choose --":
+        filtered_genera = sorted(metabolite_index.get(selected_metabolite, []))
+    else:
+        filtered_genera = all_genera
+    
+    return filtered_genera, filtered_metabolites
+
+
+def get_all_options_from_df(df: pd.DataFrame) -> tuple:
+    """
+    Get all genus and metabolite options from a single dataframe (unfiltered mode).
+    """
+    if df is None or df.empty:
+        return [], []
+    
+    metadata_cols = ['BacID', 'species', 'genus', 'order', 'type_strain', 'is_strain', 'species_with_id']
+    metabolite_cols = [c for c in df.columns if c not in metadata_cols]
+    
+    genera = sorted(df['genus'].dropna().unique()) if 'genus' in df.columns else []
+    metabolites = sorted(metabolite_cols)
+    
+    return genera, metabolites
+
 
 def load_species_data(file_path):
     return load_species_data_from_path(file_path)
@@ -774,6 +920,9 @@ def display_analysis_results(df, stats_df, analysis_title):
                 )
             else:
                 st.error(f"Column {activity_col} not found in data")
+        
+        # Sankey Diagram Section
+        display_sankey_section(df, analysis_title)
     else:
         st.warning("No meaningful activity data found to display.")
         st.info("**Possible fixes needed in utils/species_utils.py:**")
@@ -787,3 +936,330 @@ for idx, row in df.iterrows():
     metabolites_tested = sum(1 for col in metabolite_cols if row[col] != 0 and row[col] != -1)
     stats_df.loc[stats_df['species'] == row['species'], 'total_metabolites'] = metabolites_tested
         """)
+
+
+##########################################################
+### Sankey Diagram Section (with filtered selectboxes)
+##########################################################
+
+def display_sankey_section(df: pd.DataFrame = None, analysis_title: str = ""):
+    """
+    Display the Sankey diagram section with optional filtered selectboxes.
+    """
+    st.markdown("---")
+    st.subheader("Comprehensive Sankey Diagram: Genus -> Strains -> Categories -> Test Results")
+    st.write("Visualize the complete flow: how a genus splits by strain status, then by metabolite categories (Production, Utilization, Resistance, Sensitivity), and finally by test results (Positive/Negative).")
+    
+    # Checkbox for filtering (default unchecked)
+    filter_enabled = st.checkbox(
+        "Only show non-zero genus-metabolite combinations",
+        value=False,
+        help="Check this to filter the dropdowns to only show genus/metabolite pairs that have actual test data. This requires loading all activity files and may take a moment the first time."
+    )
+    
+    if filter_enabled:
+        # Load all activity files and build indices
+        with st.spinner("Loading activity files and building index..."):
+            activity_dfs = load_all_activity_dfs()
+            
+            # Check if any files loaded
+            loaded_count = sum(1 for v in activity_dfs.values() if v is not None)
+            if loaded_count == 0:
+                st.error("No activity files found in species_data folder. Please ensure the files exist.")
+                return
+            
+            # Create a hash for cache invalidation (based on which files are loaded)
+            dfs_hash = str(hash(tuple(k for k, v in activity_dfs.items() if v is not None)))
+            
+            # Build indices
+            genus_index = build_genus_metabolite_index(dfs_hash, activity_dfs)
+            metabolite_index = build_metabolite_genus_index(dfs_hash, activity_dfs)
+        
+        if not genus_index:
+            st.warning("No genus-metabolite data found in the loaded files.")
+            return
+        
+        # Use session state to track selections and enable bidirectional filtering
+        if 'sankey_genus' not in st.session_state:
+            st.session_state.sankey_genus = "-- choose --"
+        if 'sankey_metabolite' not in st.session_state:
+            st.session_state.sankey_metabolite = "-- choose --"
+        
+        # Get filtered options based on current selections
+        filtered_genera, filtered_metabolites = get_filtered_options(
+            genus_index,
+            metabolite_index,
+            st.session_state.sankey_genus,
+            st.session_state.sankey_metabolite
+        )
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            # Genus selectbox
+            genus_options = ["-- choose --"] + filtered_genera
+            selected_genus = st.selectbox(
+                "Select a Genus for Sankey Diagram:",
+                genus_options,
+                key="sankey_genus_select"
+            )
+            if selected_genus != st.session_state.sankey_genus:
+                st.session_state.sankey_genus = selected_genus
+                # Reset metabolite if it's no longer valid
+                if selected_genus != "-- choose --":
+                    valid_metabolites = genus_index.get(selected_genus, set())
+                    if st.session_state.sankey_metabolite not in valid_metabolites and st.session_state.sankey_metabolite != "-- choose --":
+                        st.session_state.sankey_metabolite = "-- choose --"
+                st.rerun()
+        
+        with col2:
+            # Metabolite selectbox (filtered based on genus if selected)
+            if selected_genus and selected_genus != "-- choose --":
+                metabolite_options = ["-- choose --"] + sorted(genus_index.get(selected_genus, []))
+            else:
+                metabolite_options = ["-- choose --"] + filtered_metabolites
+            
+            selected_metabolite = st.selectbox(
+                "Select a Metabolite:",
+                metabolite_options,
+                key="sankey_metabolite_select"
+            )
+            if selected_metabolite != st.session_state.sankey_metabolite:
+                st.session_state.sankey_metabolite = selected_metabolite
+                st.rerun()
+        
+        # Show info about current selection
+        if selected_genus != "-- choose --":
+            metabolite_count = len(genus_index.get(selected_genus, []))
+            st.info(f"**{selected_genus}** has test data for **{metabolite_count}** metabolites across all activity types.")
+        
+    else:
+        # Unfiltered mode - use single df or load a default one
+        if df is not None:
+            genera, metabolites = get_all_options_from_df(df)
+        else:
+            # Try to load a default file
+            default_path = "species_data/step3_met_res_exploded.csv.zip"
+            if os.path.exists(default_path):
+                df = load_species_data_from_path(default_path)
+                genera, metabolites = get_all_options_from_df(df)
+            else:
+                st.warning("No data available. Please load a file first.")
+                return
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            selected_genus = st.selectbox(
+                "Select a Genus for Sankey Diagram:",
+                ["-- choose --"] + genera,
+                key="sankey_genus_unfiltered"
+            )
+        
+        with col2:
+            selected_metabolite = st.selectbox(
+                "Select a Metabolite:",
+                ["-- choose --"] + metabolites,
+                key="sankey_metabolite_unfiltered"
+            )
+        
+        # Load all activity dfs for Sankey generation
+        activity_dfs = load_all_activity_dfs()
+    
+    # Generate Sankey if both selections are made
+    if selected_genus != "-- choose --" and selected_metabolite != "-- choose --":
+        st.markdown("---")
+        
+        # Configuration
+        top_k = st.slider("Number of top strains to show:", min_value=5, max_value=50, value=20, key="sankey_top_k")
+        
+        # Create Sankey
+        with st.spinner("Generating Sankey diagram..."):
+            fig = create_genus_sankey(
+                activity_dfs if filter_enabled else load_all_activity_dfs(),
+                selected_genus,
+                selected_metabolite,
+                top_k=top_k
+            )
+        
+        if fig:
+            st.plotly_chart(fig, use_container_width=True)
+        else:
+            st.warning("No data available for the selected genus/metabolite combination.")
+    elif selected_genus != "-- choose --" or selected_metabolite != "-- choose --":
+        st.info("Please select both a genus and a metabolite to generate the Sankey diagram.")
+
+
+def create_genus_sankey(
+    activity_dfs: Dict[str, pd.DataFrame],
+    genus: str,
+    metabolite: str,
+    top_k: int = 20,
+    positive_values_map: Dict[str, set] = None
+) -> Optional[go.Figure]:
+    """
+    Build Sankey nodes/links for genus/metabolite across activity_dfs.
+    
+    positive_values_map: mapping activity -> set(values considered positive)
+    e.g. {'resistance': {1}, ...}
+    """
+    if positive_values_map is None:
+        positive_values_map = {
+            'resistance': {1},      # 1 = resistant
+            'sensitivity': {1},     # 1 = sensitive
+            'production': {1},      # 1 = produces
+            'utilization': {1}      # 1 = utilizes
+        }
+    
+    # Collect rows for this genus across activities
+    species_rows = {}  # species_with_id -> dict: category -> (tested, positive)
+    categories = ['production', 'utilization', 'resistance', 'sensitivity']
+    
+    for cat in categories:
+        df = activity_dfs.get(cat)
+        if df is None or df.empty:
+            continue
+        if 'genus' not in df.columns or metabolite not in df.columns:
+            continue
+        
+        df_gen = df[df['genus'] == genus].copy()
+        if df_gen.empty:
+            continue
+        
+        # Identify strain label
+        if 'species_with_id' in df_gen.columns:
+            strain_label = df_gen['species_with_id'].fillna(df_gen.get('species', 'unknown'))
+        else:
+            strain_label = df_gen['species'].fillna('unknown') if 'species' in df_gen.columns else pd.Series(['unknown'] * len(df_gen))
+        
+        values = df_gen[metabolite]
+        tested = values.notna() & (values != 0)  # tested if nonzero
+        positives = values.isin(positive_values_map.get(cat, {1}))
+        
+        for lab, t, p in zip(strain_label, tested, positives):
+            entry = species_rows.setdefault(lab, {c: (0, 0) for c in categories})
+            # Accumulate if multiple rows for same strain
+            prev_t, prev_p = entry[cat]
+            entry[cat] = (prev_t + int(t), prev_p + int(p))
+    
+    if not species_rows:
+        return None
+    
+    # Select top_k strains by total tested across categories
+    strain_counts = {s: sum(v[c][0] for c in categories) for s, v in species_rows.items()}
+    top_strains = sorted(strain_counts.keys(), key=lambda s: strain_counts[s], reverse=True)[:top_k]
+    
+    # Filter out strains with no tests
+    top_strains = [s for s in top_strains if strain_counts[s] > 0]
+    
+    if not top_strains:
+        return None
+    
+    # Build nodes
+    nodes = []
+    node_index = {}
+    
+    # Root genus node
+    node_index['genus'] = 0
+    nodes.append({'label': genus})
+    
+    # Strain nodes
+    for s in top_strains:
+        node_index[f"strain::{s}"] = len(nodes)
+        # Truncate long strain names for display
+        display_name = s if len(s) <= 40 else s[:37] + "..."
+        nodes.append({'label': display_name})
+    
+    # Category nodes
+    for c in categories:
+        node_index[f"cat::{c}"] = len(nodes)
+        nodes.append({'label': c.capitalize()})
+    
+    # Result nodes
+    node_index['res::Positive'] = len(nodes)
+    nodes.append({'label': 'Positive'})
+    node_index['res::Negative'] = len(nodes)
+    nodes.append({'label': 'Negative'})
+    
+    # Build links
+    source, target, value = [], [], []
+    
+    # Genus -> strain (value = total tests for that strain)
+    for s in top_strains:
+        tests = strain_counts[s]
+        if tests <= 0:
+            continue
+        source.append(node_index['genus'])
+        target.append(node_index[f"strain::{s}"])
+        value.append(tests)
+    
+    # Strain -> category (value = number of tests in that category)
+    for s in top_strains:
+        for c in categories:
+            t, p = species_rows[s][c]
+            if t > 0:
+                source.append(node_index[f"strain::{s}"])
+                target.append(node_index[f"cat::{c}"])
+                value.append(t)
+    
+    # Category -> result (sum positives/negatives across strains)
+    for c in categories:
+        pos_sum = sum(species_rows[s][c][1] for s in top_strains)
+        tested_sum = sum(species_rows[s][c][0] for s in top_strains)
+        neg_sum = tested_sum - pos_sum
+        
+        if pos_sum > 0:
+            source.append(node_index[f"cat::{c}"])
+            target.append(node_index['res::Positive'])
+            value.append(pos_sum)
+        
+        if neg_sum > 0:
+            source.append(node_index[f"cat::{c}"])
+            target.append(node_index['res::Negative'])
+            value.append(neg_sum)
+    
+    # Build Sankey figure
+    fig = go.Figure(data=[go.Sankey(
+        node=dict(
+            label=[n['label'] for n in nodes],
+            pad=15,
+            thickness=15,
+            line=dict(color="#000000", width=0.5),
+            color=[
+                '#1f77b4',  # genus - blue
+                *['#2ca02c' for _ in top_strains],  # strains - green
+                '#ff7f0e', '#9467bd', '#d62728', '#8c564b',  # categories - various
+                '#17becf', '#bcbd22'  # results - cyan, olive
+            ][:len(nodes)]
+        ),
+        link=dict(
+            source=source,
+            target=target,
+            value=value,
+            color='rgba(200,200,200,0.4)'
+        ),
+        textfont=dict(
+            family="Arial, sans-serif",
+            size=18,
+            color="#FFFFFF"
+        )
+    )])
+    
+    fig.update_layout(
+        title_text=f"Sankey: {genus} -> top {len(top_strains)} strains -> categories -> results<br><sub>Metabolite: {metabolite}</sub>",
+        title_font=dict(
+            family="Arial, sans-serif",
+            size=20,
+            color="#000000"
+        ),
+        font=dict(
+            family="Arial, sans-serif",
+            size=18,
+            color="#000000"
+        ),
+        height=600,
+        paper_bgcolor="#FAFAFA",
+        plot_bgcolor="#FAFAFA"
+    )
+    
+    return fig
