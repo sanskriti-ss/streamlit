@@ -6,10 +6,19 @@ import matplotlib.pyplot as plt
 import random
 import plotly.graph_objects as go
 from io import BytesIO
+import sys
+from pathlib import Path
+
+# Add parent directory to path to import utils
+sys.path.append(str(Path(__file__).parent.parent))
+from utils.tooltip_title import display_title_with_tooltip
 
 def display(data_frames):
-    st.title("Parallel Coordinates Plot for Genera Trends")
-    st.write("Compare up to 5 genera across Production, Utilization, Resistance, and Sensitivity.")
+    display_title_with_tooltip(
+        "Parallel Coordinates Plot for Genera Trends",
+        sample_image_filename="trends_5genera_comparison.png",
+        description_text="Compare up to 5 genera across Production, Utilization, Resistance, and Sensitivity."
+    )
 
     ### Step 1: store selections so it stops re-running on every change
     if "test_type" not in st.session_state:
@@ -80,8 +89,11 @@ def display(data_frames):
 
     # --- Sankey Diagram Section ---
     st.markdown("---")
-    st.title("Comprehensive Sankey Diagram: Genus → Strains → Categories → Test Results")
-    st.write("Visualize the complete flow: how a genus splits by strain status, then by metabolite categories (Production, Utilization, Resistance, Sensitivity), and finally by test results (Positive/Negative).")
+    display_title_with_tooltip(
+        "Comprehensive Sankey Diagram: Genus → Strains → Categories → Test Results",
+        sample_image_filename="trends_sankey.png",
+        description_text="Visualize the complete flow: how a genus splits by strain status, then by metabolite categories (Production, Utilization, Resistance, Sensitivity), and finally by test results (Positive/Negative)."
+    )
 
     # Checkbox for filtering (default unchecked)
     filter_enabled = st.checkbox(
