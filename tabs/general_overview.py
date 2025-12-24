@@ -17,7 +17,7 @@ def display(data_frames):
 
     # Mapping selections to filename
     test_type_short = "negatively" if test_type == "Negatively Tested" else "positively"
-    strain_short = "nostrain" if strain_option == "Strain" else "yesstrain"
+    strain_short = "isolate" if strain_option == "Strain" else "strain"
     category_mapping = {"Production": "prod", "Utilization": "util", "Resistance": "res", "Sensitivity": "sen"}
     category_short = category_mapping[category]
 

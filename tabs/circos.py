@@ -10,10 +10,10 @@ from typing import Tuple, Dict, List
 
 ##### loading in our data files
 ##### need to replace if we get new files.
-df_pos_res_nostrain = pd.read_csv("data_files/step4_positively_tested_by_genera_res_nostrain.csv")
-df_pos_res_yesstrain = pd.read_csv("data_files/step4_positively_tested_by_genera_res_yesstrain.csv")
-df_pos_sen_nostrain = pd.read_csv("data_files/step4_positively_tested_by_genera_sen_nostrain.csv")
-df_pos_sen_yesstrain = pd.read_csv("data_files/step4_positively_tested_by_genera_sen_yesstrain.csv")
+df_pos_res_isolate = pd.read_csv("data_files/step4_positively_tested_by_genera_res_isolate.csv")
+df_pos_res_strain = pd.read_csv("data_files/step4_positively_tested_by_genera_res_strain.csv")
+df_pos_sen_isolate = pd.read_csv("data_files/step4_positively_tested_by_genera_sen_isolate.csv")
+df_pos_sen_strain = pd.read_csv("data_files/step4_positively_tested_by_genera_sen_strain.csv")
 
 @st.cache_data
 
@@ -356,10 +356,10 @@ def generate_secondary_files(
     result_files = {}
 
     secondary_df_map = {
-        'Resistance + Nostrains': df_pos_res_nostrain,
-        'Resistance + Onlystrains': df_pos_res_yesstrain,
-        'Sensitivity + Nostrains': df_pos_sen_nostrain,
-        'Sensitivity + Onlystrains': df_pos_sen_yesstrain
+        'Resistance + Isolates': df_pos_res_isolate,
+        'Resistance + Strains': df_pos_res_strain,
+        'Sensitivity + Isolates': df_pos_sen_isolate,
+        'Sensitivity + Strains': df_pos_sen_strain
     }
 
     # We'll iterate over each secondary dataset the user selected
@@ -461,7 +461,7 @@ def generate_edges_file(primary_data_file, txt_file_name, values):
     ]
 
     # Decide the line_format for primary data
-    if values['res_or_sens'] in ['Resistance + Nostrains', 'Resistance + Onlystrains']:
+    if values['res_or_sens'] in ['Resistance + Isolates', 'Resistance + Strains']:
         line_format = 'black'
     else:
         line_format = 'black'
@@ -540,10 +540,10 @@ def crop_df(values, df):
 def generate_files(values):
     # based on dropdown selection, first creating the map, selecting it
     res_or_sens_map = {
-    'Resistance + Nostrains': ('res_1strain', df_pos_res_nostrain),
-    'Resistance + Onlystrains': ('res_0strain',  df_pos_res_yesstrain),
-    'Sensitivity + Nostrains':  ('sen_1strain',  df_pos_sen_nostrain),
-    'Sensitivity + Onlystrains': ('sen_0strain', df_pos_sen_yesstrain)
+    'Resistance + Isolates': ('res_1strain', df_pos_res_isolate),
+    'Resistance + Strains': ('res_0strain',  df_pos_res_strain),
+    'Sensitivity + Isolates':  ('sen_1strain',  df_pos_sen_isolate),
+    'Sensitivity + Strains': ('sen_0strain', df_pos_sen_strain)
     }
 
     # determining file name for edge_file
@@ -573,7 +573,7 @@ def display():
     st.header("Circos Settings")
     values = {}
     values['res_or_sens'] = st.selectbox("Primary Dataset:", 
-        ['Resistance + Nostrains', 'Resistance + Onlystrains', 'Sensitivity + Nostrains', 'Sensitivity + Onlystrains'], index=0)
+        ['Resistance + Isolates', 'Resistance + Strains', 'Sensitivity + Isolates', 'Sensitivity + Strains'], index=0)
     values['gen_or_met'] = st.selectbox("Sort by Metabolite or Genus:", 
         ['Metabolites', 'Genera'], index=1)
     # values['choose_colours'] = st.selectbox("Selection for Dynamic Line Colour:", 
@@ -581,12 +581,12 @@ def display():
     values['filter_strength'] = st.selectbox("Selection for Pairs:", 
         ['Doubles', 'Triples', 'Quadruples', 'Quintuples'], index=1)
     values['number_to_include'] = st.slider("Number of Edges", min_value=1, max_value=50, step=1, value=50)
-    values['res_or_sens_checkboxes'] = st.multiselect("Secondary generated files (Res/Sens, Nostrains/Onlystrains):", 
-        ['Resistance + Nostrains', 'Resistance + Onlystrains', 'Sensitivity + Nostrains', 'Sensitivity + Onlystrains'])
+    values['res_or_sens_checkboxes'] = st.multiselect("Secondary generated files (Res/Sens, Isolates/Strains):", 
+        ['Resistance + Isolates', 'Resistance + Strains', 'Sensitivity + Isolates', 'Sensitivity + Strains'])
     values['filter_strength_checkboxes'] = st.multiselect("Secondary generated files (Selection Options):", 
         ['Doubles', 'Triples', 'Quadruples', 'Quintuples'])
     # New widget for secondary dataset naming:
-    values['secondary_dataset'] = st.selectbox("Secondary Dataset:", ['Nostrains', 'Onlystrains'], index=0)
+    values['secondary_dataset'] = st.selectbox("Secondary Dataset:", ['Isolates', 'Strains'], index=0)
     
     if st.button("Generate Files"):
         result_files = generate_files(values)

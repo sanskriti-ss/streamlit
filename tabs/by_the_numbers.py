@@ -43,7 +43,7 @@ def summary_bargraphs(data_frames):
 def _compute_combined_df(data_frames, test_type, strain_option):
     # Process widget input values
     test_type_short = "negatively" if test_type == "Negatively Tested" else "positively"
-    strain_short = "nostrain" if strain_option == "Isolate" else "yesstrain"
+    strain_short = "isolate" if strain_option == "Isolate" else "strain"
     
     # Mapping for the four categories
     category_mapping = {
@@ -122,30 +122,30 @@ def display(data_frames):
     st.header("By the Numbers")
     st.write("Summary statistics:")
     
-    # Choose a file that represents 'No Strain' and 'Yes Strain'.
-    file_nostrain = next((fname for fname in data_frames if "nostrain" in fname), None)
-    file_yesstrain = next((fname for fname in data_frames if "yesstrain" in fname), None)
+    # Choose a file that represents 'Isolate' and 'Strain'.
+    file_isolate = next((fname for fname in data_frames if "isolate" in fname), None)
+    file_strain = next((fname for fname in data_frames if "strain" in fname and "isolate" not in fname), None)
     
-    if not file_nostrain:
-        st.error("No file with 'nostrain' found in the data.")
+    if not file_isolate:
+        st.error("No file with 'isolate' found in the data.")
         return
     
-    df_nostrain = data_frames[file_nostrain]
-    metabolite_columns = df_nostrain.columns.difference(['genus', 'species_count'])
+    df_isolate = data_frames[file_isolate]
+    metabolite_columns = df_isolate.columns.difference(['genus', 'species_count'])
     num_metabolites = len(metabolite_columns)
-    num_genera = df_nostrain["genus"].nunique()
-    total_species_nostrain = df_nostrain["species_count"].sum()
+    num_genera = df_isolate["genus"].nunique()
+    total_species_isolate = df_isolate["species_count"].sum()
     
-    if file_yesstrain:
-        df_yesstrain = data_frames[file_yesstrain]
-        total_species_yesstrain = df_yesstrain["species_count"].sum()
+    if file_strain:
+        df_strain = data_frames[file_strain]
+        total_species_strain = df_strain["species_count"].sum()
     else:
-        total_species_yesstrain = "Not Available"
+        total_species_strain = "Not Available"
     
     st.write(f"**Number of Metabolites:** {num_metabolites}")
     st.write(f"**Number of Genera:** {num_genera}")
-    st.write(f"**Total Number of (No Strain) Species:** {total_species_nostrain}")
-    st.write(f"**Total Number (Yes Strain) Species:** {total_species_yesstrain}")
+    st.write(f"**Total Number of (Isolate) Species:** {total_species_isolate}")
+    st.write(f"**Total Number (Strain) Species:** {total_species_strain}")
     
     # Draw the grouped bar chart below the summaries.
     summary_bargraphs(data_frames)
@@ -201,7 +201,7 @@ def _compute_homogeneous_summary(data_frames, homo_category, homo_strain):
     if homo_category not in cat_mapping:
         raise ValueError("Invalid metabolite category selection.")
     cat_short = cat_mapping[homo_category]
-    strain_short = "nostrain" if homo_strain == "Isolate" else "yesstrain"
+    strain_short = "isolate" if homo_strain == "Isolate" else "strain"
     
     # Construct file keys.
     file_key_pos = f"step4_positively_tested_by_genera_{cat_short}_{strain_short}.csv"
