@@ -7,6 +7,7 @@ from itertools import combinations
 from collections import Counter
 import io
 from typing import Tuple, Dict, List
+from utils.tooltip_title import display_title_with_tooltip
 
 ##### loading in our data files
 ##### need to replace if we get new files.
@@ -570,7 +571,29 @@ def generate_files(values):
 
 #### main function
 def display():
-    st.header("Circos Settings")
+    # Use the modular tooltip title with hover image
+    import os
+    # Check if the new circos example exists, otherwise use the default
+    if os.path.exists("sample_plots/circos_example.png"):
+        image_file = "circos_example.png"
+    else:
+        image_file = "general_heatmapbynumbers.jpg"
+    
+    display_title_with_tooltip(
+        title_text="Circos Settings",
+        sample_image_filename=image_file,
+        description_text=(
+            "This will generate a few `.txt` files that you can run on Circos in order to better visualize "
+            "relationships between different metabolites, or different genera. Further instructions for how "
+            "to install and run Circos are available on the "
+            "[GitHub README](https://github.com/sanskriti-ss/streamlit/blob/main/README.md)."
+            "In the example shown, he thicker and darker the line, the more metabolites are shared by different genera."
+            "The green is for sensitivity, the orange is for resistance. The selected pairs is triples, so lines are only shown if 3+ mets are shared."
+        )
+    )
+    
+    st.markdown("---")  # Add a separator
+    
     values = {}
     values['res_or_sens'] = st.selectbox("Primary Dataset:", 
         ['Resistance + Isolates', 'Resistance + Strains', 'Sensitivity + Isolates', 'Sensitivity + Strains'], index=0)

@@ -8,6 +8,12 @@ from collections import Counter
 import io
 from typing import Tuple, Dict, List
 import random
+import sys
+from pathlib import Path
+
+# Add parent directory to path to import utils
+sys.path.append(str(Path(__file__).parent.parent))
+from utils.tooltip_title import display_title_with_tooltip
 
 ##### loading in our data files
 ##### need to replace if we get new files.
@@ -29,8 +35,11 @@ def load_category_data(strain_suffix: str) -> dict[str, pd.DataFrame]:
     }
 
 def display(data_frames):
-    st.title("Comparison of Genera")
-    st.write("Select up to 10 genera and see which metabolites fall into each category.")
+    display_title_with_tooltip(
+        "Comparison of Genera",
+        sample_image_filename="comparison.png",
+        description_text="Select up to 10 genera and see which metabolites fall into each category."
+    )
 
     # 1) Choose strain
     strain_option = st.radio("Strain Option", ["Isolates","Strains"])

@@ -1,5 +1,99 @@
 import streamlit as st
 import pandas as pd
+import sys
+from pathlib import Path
+
+# Add parent directory to path to import utils
+sys.path.append(str(Path(__file__).parent.parent))
+from utils.card_styling import apply_card_style
+
+# Helper: Create trading card style header with clear hierarchy
+def render_card_header(genus_name):
+    """
+    Render genus name as a large, bold trading card header.
+    """
+    header_html = f"""
+    <style>
+    .card-genus-header {{
+        text-align: center;
+        padding: 0.5rem 0;
+        margin-bottom: 1rem;
+        border-bottom: 2px solid #e0e0e0;
+    }}
+    .card-genus-header h2 {{
+        margin: 0 !important;
+        font-size: 1.8em !important;
+        font-weight: 700 !important;
+        color: #1a1a1a !important;
+        letter-spacing: 0.5px !important;
+    }}
+    </style>
+    <div class="card-genus-header">
+        <h2>{genus_name}</h2>
+    </div>
+    """
+    st.markdown(header_html, unsafe_allow_html=True)
+
+# Helper: Render section header (Isolate/Strain) with clear visual distinction
+def render_section_header(section_name):
+    """
+    Render section header (Isolate or Strain) with medium emphasis.
+    """
+    header_html = f"""
+    <style>
+    .card-section-header {{
+        margin-top: 1rem;
+        margin-bottom: 0.8rem;
+    }}
+    .card-section-header h3 {{
+        margin: 0 !important;
+        font-size: 1.1em !important;
+        font-weight: 600 !important;
+        color: #4a4a4a !important;
+        text-transform: uppercase !important;
+        letter-spacing: 1px !important;
+        border-left: 3px solid #7B9E89 !important;
+        padding-left: 0.5rem !important;
+    }}
+    </style>
+    <div class="card-section-header">
+        <h3>{section_name}</h3>
+    </div>
+    """
+    st.markdown(header_html, unsafe_allow_html=True)
+
+# Helper: Render species count with big number and small metadata
+def render_species_count(count, rank):
+    """
+    Render species count with large number and small rank metadata.
+    """
+    count_html = f"""
+    <style>
+    .species-count-container {{
+        text-align: center;
+        margin: 1rem 0;
+    }}
+    .species-count-big {{
+        font-size: 3em !important;
+        font-weight: 700 !important;
+        color: #2c2c2c !important;
+        line-height: 1 !important;
+        margin-bottom: 0.2rem !important;
+    }}
+    .species-count-meta {{
+        font-size: 0.85em !important;
+        color: #888 !important;
+        font-weight: 500 !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.5px !important;
+    }}
+    </style>
+    <div class="species-count-container">
+        <div class="species-count-big">{count}</div>
+        <div class="species-count-meta">Species • Rank #{rank}</div>
+    </div>
+    """
+    st.markdown(count_html, unsafe_allow_html=True)
 
 # Helper: Render a rectangle with given count and rank.
 def render_shape(count, rank, color, width=80, height=40):
@@ -56,6 +150,9 @@ def get_unique_mets_ranking(data_frames, cat, strain_option="Isolate"):
     return dict(zip(ranking_df['genus'], ranking_df['rank']))
 
 def display(data_frames):
+    # Apply card styling at the start
+    apply_card_style()
+    
     st.header("Cards")
     st.write("Click on a card below to view details for each genus. (Details will be added soon.)")
 
@@ -100,7 +197,12 @@ def display(data_frames):
         for idx, genus in enumerate(row):
             with cols[idx]:
                 with st.expander(genus, expanded=False):
-                    st.write("**Isolate**")
+                    # Trading card style header
+                    render_card_header(genus)
+                    
+                    # === ISOLATE SECTION ===
+                    render_section_header("Isolate")
+                    
                     # Species count for Isolate.
                     if prod_key_no in data_frames:
                         df_prod_no = data_frames[prod_key_no]
@@ -109,7 +211,9 @@ def display(data_frames):
                     else:
                         species_count_no = "N/A"
                     rank_no = species_ranking_no.get(genus, "N/A")
-                    st.write(f"**# of species:** {species_count_no} (#{rank_no})")
+                    
+                    # Render big number with small metadata
+                    render_species_count(species_count_no, rank_no)
                     
                     # Render unique metabolite counts in a 2x2 grid for No Strains.
                     cols_grid1 = st.columns(2)
@@ -163,9 +267,12 @@ def display(data_frames):
                         rank_val = unique_rankings_no.get("Sensitivity", {}).get(genus, "")
                         st.markdown(render_shape(unique_count, rank_val if rank_val else "", pastel_colors["Sensitivity"]), unsafe_allow_html=True)
                     
-                    st.markdown("<hr style='margin-top:5px; margin-bottom:5px;'>", unsafe_allow_html=True)
+                    # Divider between sections
+                    st.markdown("<hr style='margin: 1.5rem 0; border: none; border-top: 2px solid #e0e0e0;'>", unsafe_allow_html=True)
                     
-                    st.write("**Strain**")
+                    # === STRAIN SECTION ===
+                    render_section_header("Strain")
+                    
                     # Species count for Strains.
                     if prod_key_yes in data_frames:
                         df_prod_yes = data_frames[prod_key_yes]
@@ -174,7 +281,9 @@ def display(data_frames):
                     else:
                         species_count_yes = "N/A"
                     rank_yes = species_ranking_yes.get(genus, "N/A")
-                    st.write(f"**# of species:** {species_count_yes} (#{rank_yes})")
+                    
+                    # Render big number with small metadata
+                    render_species_count(species_count_yes, rank_yes)
                     
                     # Grid for Strain unique metabolite counts.
                     cols_grid1 = st.columns(2)
