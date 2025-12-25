@@ -922,7 +922,7 @@ def display_analysis_results(df, stats_df, analysis_title):
                 st.error(f"Column {activity_col} not found in data")
         
         # Sankey Diagram Section
-        display_sankey_section(df, analysis_title)
+        # display_sankey_section(df, analysis_title)
     else:
         st.warning("No meaningful activity data found to display.")
         st.info("**Possible fixes needed in utils/species_utils.py:**")

@@ -192,7 +192,6 @@ def calculate_species_stats(df: pd.DataFrame, activity_type: str = "utilization"
             'type_strain': strain_info,
             activity_col: metabolites_with_activity,
             'metabolites_tested': metabolites_tested,
-            'total_metabolites': len(metabolite_cols),  # keep for reference; don’t use for rate
             rate_col: activity_rate,
             'activity_type': activity_type.capitalize()
         })
@@ -214,13 +213,13 @@ def get_top_species_across_files(combined_stats: pd.DataFrame, top_n: int = 10) 
     species_totals = combined_stats.groupby(['species', 'genus', 'order']).agg({
         'metabolites_utilized': 'sum',
         'metabolites_tested': 'sum',
-        'total_metabolites': 'sum',
+        
         'file_type': lambda x: ', '.join(x.unique())
     }).reset_index()
     
     # Recalculate utilization rate
     species_totals['overall_utilization_rate'] = (
-        species_totals['metabolites_utilized'] / species_totals['total_metabolites'] * 100
+        species_totals['metabolites_utilized'] / species_totals['metabolites_tested'] * 100
     )
     
     # Sort and return top N
