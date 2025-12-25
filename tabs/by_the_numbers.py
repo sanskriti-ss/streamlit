@@ -4,9 +4,18 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 from io import BytesIO
+import sys
+from pathlib import Path
+
+# Add parent directory to path to import utils
+sys.path.append(str(Path(__file__).parent.parent))
+from utils.tooltip_title import display_title_with_tooltip
 
 def summary_bargraphs(data_frames):
-    st.header("Metabolite Counts Bar Graph")
+    display_title_with_tooltip(
+        "Metabolite Counts Bar Graph",
+        sample_image_filename="bythenumbers_metcount.png"
+    )
     
     # Widget commands (outside cached functions)
     test_type = st.radio("Choose Test Type:", ["Negatively Tested", "Positively Tested"], index=1)
@@ -119,8 +128,10 @@ def _compute_summary_bargraphs(data_frames, test_type, strain_option, sort_categ
     return fig
 
 def display(data_frames):
-    st.header("By the Numbers")
-    st.write("Summary statistics:")
+    display_title_with_tooltip(
+        "By the Numbers",
+        description_text="Summary statistics:"
+    )
     
     # Choose a file that represents 'Isolate' and 'Strain'.
     file_isolate = next((fname for fname in data_frames if "isolate" in fname), None)
@@ -155,12 +166,15 @@ def display(data_frames):
     # New Section: Homogeneous Metabolite Summary
     ###########################################
     st.markdown("---")
-    st.header("Homogeneous Metabolite Summary by Genus")
-    st.write(
-        "For a selected metabolite category, this section lists genera where, for at least one metabolite, "
-        "all species (with a minimum of 5 species) tested uniformly positive or uniformly negative. "
-        "It also shows which metabolite(s) met that criteria. If a genus appears with both positive and negative "
-        "results (i.e. mixed), it is omitted."
+    display_title_with_tooltip(
+        "Homogeneous Metabolite Summary by Genus",
+        sample_image_filename="bythenumbers_metsummary.png",
+        description_text=(
+            "For a selected metabolite category, this section lists genera where, for at least one metabolite, "
+            "all species (with a minimum of 5 species) tested uniformly positive or uniformly negative. "
+            "It also shows which metabolite(s) met that criteria. If a genus appears with both positive and negative "
+            "results (i.e. mixed), it is omitted."
+        )
     )
     
     # New selection options for metabolite category and strain.

@@ -3,6 +3,95 @@ import streamlit as st
 import pandas as pd
 import base64
 import os
+import sys
+from pathlib import Path
+
+# Add parent directory to path to import utils
+sys.path.append(str(Path(__file__).parent.parent))
+from utils.card_styling import apply_card_style
+
+# Helper: Create trading card style header with clear hierarchy
+def render_card_header(genus_name):
+    """
+    Render genus name as a large, bold trading card header.
+    """
+    header_html = f"""
+    <style>
+    .card-genus-header {{
+        text-align: center;
+        padding: 0 0 0.2rem 0;
+        margin-bottom: 0.5rem;
+        border-bottom: 2px solid #e0e0e0;
+    }}
+    .card-genus-header h2 {{
+        margin: 0 !important;
+        font-size: 1.8em !important;
+        font-weight: 700 !important;
+        color: #1a1a1a !important;
+        letter-spacing: 0.5px !important;
+    }}
+    </style>
+    <div class="card-genus-header">
+        <h2>{genus_name}</h2>
+    </div>
+    """
+    st.markdown(header_html, unsafe_allow_html=True)
+
+# Helper: Render section header (Isolate/Strain) with species count aligned to the right
+def render_section_header_with_count(section_name, count, rank):
+    """
+    Render section header with species count and rank on the same line.
+    Section name on left, count/rank on right.
+    """
+    header_html = f"""
+    <style>
+    .card-section-row {{
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-top: 0.8rem;
+        margin-bottom: 0.8rem;
+    }}
+    .card-section-row h3 {{
+        margin: 0 !important;
+        font-size: 1.1em !important;
+        font-weight: 600 !important;
+        color: #4a4a4a !important;
+        text-transform: uppercase !important;
+        letter-spacing: 1px !important;
+        border-left: 3px solid #7B9E89 !important;
+        padding-left: 0.5rem !important;
+    }}
+    .card-section-count {{
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        text-align: right;
+    }}
+    .card-section-count-big {{
+        font-size: 2em !important;
+        font-weight: 700 !important;
+        color: #2c2c2c !important;
+        line-height: 1 !important;
+        margin-bottom: 0.1rem !important;
+    }}
+    .card-section-count-meta {{
+        font-size: 0.75em !important;
+        color: #888 !important;
+        font-weight: 500 !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.5px !important;
+    }}
+    </style>
+    <div class="card-section-row">
+        <h3>{section_name}</h3>
+        <div class="card-section-count">
+            <div class="card-section-count-big">{count}</div>
+            <div class="card-section-count-meta">Rank #{rank}</div>
+        </div>
+    </div>
+    """
+    st.markdown(header_html, unsafe_allow_html=True)
 
 # Helper: load icon as base64 string (cached)
 @st.cache_data
@@ -82,6 +171,9 @@ def get_unique_mets_ranking(data_frames, cat, strain_option='Isolate'):
 # Main display function
 
 def display(data_frames):
+    # Apply card styling at the start
+    apply_card_style()
+    
     st.header('Cards')
     st.write('Click on a card below to view details for each genus.')
 
@@ -107,13 +199,17 @@ def display(data_frames):
         for j, genus in enumerate(genera[i:i+cols_per_row]):
             with cols[j]:
                 with st.expander(genus):
-                    # Isolate block
-                    st.write('**Isolates**')
+                    # Trading card style header
+                    render_card_header(genus)
+                    
+                    # === ISOLATE SECTION ===
                     df_pn = data_frames.get('step4_positively_tested_by_genera_prod_isolate.csv', pd.DataFrame())
                     r = df_pn[df_pn['genus']==genus]
                     sp_n = r['species_count'].iloc[0] if not r.empty else 'N/A'
                     rk_n = species_no.get(genus, 'N/A')
-                    st.write(f"**# of species:** {sp_n} (#{rk_n})")
+                    
+                    # Render section header with count on the same line
+                    render_section_header_with_count("Isolates", sp_n, rk_n)
 
                     g1, g2 = st.columns(2), st.columns(2)
                     for idx, cat in enumerate(['Production','Utilization','Resistance','Sensitivity']):
@@ -126,15 +222,17 @@ def display(data_frames):
                             rv = unique_no[cat].get(genus, '')
                             st.markdown(render_shape(uc, rv, key), unsafe_allow_html=True)
 
-                    st.markdown("<hr style='margin:5px 0;'>", unsafe_allow_html=True)
+                    # Divider between sections - reduced spacing
+                    st.markdown("<hr style='margin: 0.8rem 0; border: none; border-top: 2px solid #e0e0e0;'>", unsafe_allow_html=True)
 
-                    # Yes Strains block
-                    st.write('**Strains**')
+                    # === STRAIN SECTION ===
                     df_py = data_frames.get('step4_positively_tested_by_genera_prod_strain.csv', pd.DataFrame())
                     r2 = df_py[df_py['genus']==genus]
                     sp_y = r2['species_count'].iloc[0] if not r2.empty else 'N/A'
                     rk_y = species_yes.get(genus, 'N/A')
-                    st.write(f"**# of species:** {sp_y} (#{rk_y})")
+                    
+                    # Render section header with count on the same line
+                    render_section_header_with_count("Strains", sp_y, rk_y)
 
                     g1, g2 = st.columns(2), st.columns(2)
                     for idx, cat in enumerate(['Production','Utilization','Resistance','Sensitivity']):

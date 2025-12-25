@@ -104,6 +104,10 @@ def display_title_with_tooltip(title_text, sample_image_filename=None, descripti
             with open(sample_image_path, "rb") as img_file:
                 img_data = base64.b64encode(img_file.read()).decode()
             
+            # Determine the MIME type based on file extension
+            file_ext = sample_image_path.suffix.lower()
+            mime_type = "image/png" if file_ext == ".png" else "image/jpeg"
+            
             # Create HTML with tooltip
             tooltip_html = f"""
             {tooltip_css}
@@ -111,8 +115,8 @@ def display_title_with_tooltip(title_text, sample_image_filename=None, descripti
                 <span class="tooltip-title">{title_text}</span>
                 <span class="tooltip-label">(hover to see example)</span>
                 <div class="tooltip-image">
-                    <img src="data:image/png;base64,{img_data}" alt="Sample plot">
-                    <div class="expand-hint">↓ Click button to expand ↓</div>
+                    <img src="data:{mime_type};base64,{img_data}" alt="Sample plot">
+                    <div class="expand-hint">↓ Click button to expand in new tab ↓</div>
                 </div>
             </div>
             """
@@ -123,16 +127,47 @@ def display_title_with_tooltip(title_text, sample_image_filename=None, descripti
                 st.markdown(tooltip_html, unsafe_allow_html=True)
             with col2:
                 st.markdown("<div style='margin-top: 0.8em;'></div>", unsafe_allow_html=True)
-                if st.button("Expand", key=f"btn_{modal_key}", help="Click to view full-size example"):
-                    st.session_state[modal_key] = not st.session_state[modal_key]
-            
-            # Display expanded image when button is clicked
-            if st.session_state[modal_key]:
-                with st.container():
-                    st.markdown("---")
-                    img = Image.open(sample_image_path)
-                    st.image(img, caption="Example visualization - Click 'Expand' button again to close", use_container_width=True)
-                    st.markdown("---")
+                # Use HTML component that opens image in new tab
+                st.components.v1.html(
+                    f"""
+                    <style>
+                    .expand-btn {{
+                        background-color: #ffffff;
+                        border: 1px solid #d3d3d3;
+                        border-radius: 4px;
+                        padding: 0.25rem 0.75rem;
+                        cursor: pointer;
+                        font-size: 14px;
+                        color: #262730;
+                        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+                        font-weight: 400;
+                        transition: all 0.2s ease;
+                    }}
+                    .expand-btn:hover {{
+                        background-color: #f0f2f6;
+                        border-color: #999;
+                        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+                    }}
+                    .expand-btn:active {{
+                        background-color: #e0e2e6;
+                        transform: translateY(1px);
+                    }}
+                    </style>
+                    <button onclick="openImage()" class="expand-btn">
+                        Expand
+                    </button>
+                    <script>
+                    function openImage() {{
+                        var image = new Image();
+                        image.src = 'data:{mime_type};base64,{img_data}';
+                        var w = window.open('');
+                        w.document.write(image.outerHTML);
+                        w.document.close();
+                    }}
+                    </script>
+                    """,
+                    height=40
+                )
         else:
             # If image doesn't exist, just show the title with reduced size
             title_html = f'<h1 style="font-size: 1.75em; margin-bottom: 0.5em;">{title_text}</h1>'
