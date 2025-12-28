@@ -9,15 +9,6 @@ from utils.data_loader import load_data
 # Define available tabs
 available_tabs = ["General Overview", "Circos", "Trends", "Cards", "By the Numbers", "Comparison", "Species Analysis"]
 
-# Get tab from query parameters (for persistence on refresh)
-query_params = st.query_params
-query_tab = query_params.get("tab", None)
-
-# Initialize session state for tab persistence
-if 'active_tab' not in st.session_state:
-    # Use query parameter if available, otherwise default to General Overview
-    st.session_state.active_tab = query_tab if query_tab in available_tabs else "General Overview"
-
 # Load CSV files from the data_files folder
 data_folder = "data_files"
 data_frames = load_data(data_folder)
@@ -27,16 +18,23 @@ if data_frames:
 
 # Sidebar Navigation
 st.sidebar.title("Navigation")
+
+# Get saved tab from query params for initial load only
+query_tab = st.query_params.get("tab", None)
+if query_tab in available_tabs:
+    default_idx = available_tabs.index(query_tab)
+else:
+    default_idx = 0
+
+# Radio button with default index set once at load
 tab = st.sidebar.radio(
     "Go to", 
     available_tabs,
-    index=available_tabs.index(st.session_state.active_tab)
+    index=default_idx
 )
 
-# Update session state and query parameters when tab changes
-if tab != st.session_state.active_tab:
-    st.session_state.active_tab = tab
-    st.query_params["tab"] = tab
+# Save the selected tab to query params for persistence
+st.query_params["tab"] = tab
 
 # Route to the correct tab
 if tab == "General Overview":
