@@ -586,9 +586,18 @@ def display():
             "This will generate a few `.txt` files that you can run on Circos in order to better visualize "
             "relationships between different metabolites, or different genera. Further instructions for how "
             "to install and run Circos are available on the "
-            "[GitHub README](https://github.com/sanskriti-ss/streamlit/blob/main/README.md)."
-            "In the example shown, he thicker and darker the line, the more metabolites are shared by different genera."
-            "The green is for sensitivity, the orange is for resistance. The selected pairs is triples, so lines are only shown if 3+ mets are shared."
+            "[GitHub README](https://github.com/sanskriti-ss/streamlit/blob/main/README.md).\n"
+            "\n"
+            "- In the example shown, the thicker and darker the line, the more metabolites are shared by different genera.\n"
+            "- The green is for sensitivity, the orange is for resistance. The selected pairs is triples, so lines are only shown if 3+ mets are shared.\n"
+            "- These circle plots are generally useful if you want to quickly visualize different relationships between genera and metabolites.\n"
+            "\n"
+            "Options:\n"
+            "- When choosing the options, you can first choose the primary dataset (are you interested in resistance or sensitivity? in isolates or strains?).\n"
+            "- You can also choose whether you want the metabolites or the genera to be on the outer ring. If you choose genera, the chords will be for shared metabolites (and vice versa).\n"
+            "- Choosing doubles/triples/etc. will filter the number of lines shown - for sparse plots, choose doubles; for crowded plots, choose quintuples. The more metabolites/genera that are shared, the thicker the line by default."
+            "- The number of edges will determine how many nodes are shown on the outer ring (e.g., top 10 genera with most resistances).\n"
+            "- You can also choose (multiple!) secondary datasets to overlay on top of the primary dataset, for comparison (e.g., overlay sensitivity data on top of resistance data)."
         )
     )
     
@@ -597,11 +606,11 @@ def display():
     values = {}
     values['res_or_sens'] = st.selectbox("Primary Dataset:", 
         ['Resistance + Isolates', 'Resistance + Strains', 'Sensitivity + Isolates', 'Sensitivity + Strains'], index=0)
-    values['gen_or_met'] = st.selectbox("Sort by Metabolite or Genus:", 
+    values['gen_or_met'] = st.selectbox("Sort by Metabolite or Genus (which one do you want to be on the outer ring):", 
         ['Metabolites', 'Genera'], index=1)
     # values['choose_colours'] = st.selectbox("Selection for Dynamic Line Colour:", 
     #     ['Red', 'Orange', 'Green', 'Blue', 'Purple'], index=4)
-    values['filter_strength'] = st.selectbox("Selection for Pairs:", 
+    values['filter_strength'] = st.selectbox("Selection for Pairs (for plots you expect to be sparse, opt for doubles; for plots that you expect to be crowded, choose quintuples):", 
         ['Doubles', 'Triples', 'Quadruples', 'Quintuples'], index=1)
     values['number_to_include'] = st.slider("Number of Edges", min_value=1, max_value=50, step=1, value=50)
     values['res_or_sens_checkboxes'] = st.multiselect("Secondary generated files (Res/Sens, Isolates/Strains):", 
