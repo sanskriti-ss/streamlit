@@ -13,7 +13,7 @@ The general overview allows you to do selections for negatively/positively teste
 You can then select genera by highest absolute values or proportions: that is, genera that have the highest number of species that are ‘resistant’ to the metabolite, or genera that have the highest proportion of species that are. However, we advise the user to take this section with a grain of salt, as it is just meant to provide a quick overview.
 
 ## Circos
-Users are able to choose a ‘primary’ category of interest — whether the edges be metabolites or genera. They can also choose a ‘secondary’ categor(ies) of interest in order to overlap multiple graphs on a single one. The output will be in .txt files, that you will need to run on circos yourself. You must install it for this to work! Instructions available in the readme in a future update.
+Users are able to choose a ‘primary’ category of interest — whether the edges be metabolites or genera. They can also choose a ‘secondary’ categor(ies) of interest in order to overlap multiple graphs on a single one. The output will be in .txt files, that you will need to run on circos yourself. You must install it for this to work! Instructions available in [Circos Instructions](Circos_Instructions.md).
 
 ## Trends
 Two possible visualizations on this page:
