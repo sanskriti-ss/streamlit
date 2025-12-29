@@ -9,47 +9,51 @@ from utils.data_loader import load_data
 # Define available tabs
 available_tabs = ["General Overview", "Circos", "Trends", "Cards", "By the Numbers", "Comparison", "Species Analysis"]
 
-# Get tab from query parameters (for persistence on refresh)
-query_params = st.query_params
-query_tab = query_params.get("tab", None)
-
-# Initialize session state for tab persistence
-if 'active_tab' not in st.session_state:
-    # Use query parameter if available, otherwise default to General Overview
-    st.session_state.active_tab = query_tab if query_tab in available_tabs else "General Overview"
-
-# Load CSV files from the data_files folder
+# Load CSV files from the data_files folder (do this before sidebar to avoid reloading)
 data_folder = "data_files"
 data_frames = load_data(data_folder)
+
+# Sidebar Navigation - must be at the top before any content
+st.sidebar.title("Navigation")
+
+# Initialize tab selection in session state if not present
+if 'selected_tab' not in st.session_state:
+    # Check query parameters for persisted tab
+    query_tab = st.query_params.get("tab", None)
+    if query_tab and query_tab in available_tabs:
+        st.session_state.selected_tab = query_tab
+    else:
+        st.session_state.selected_tab = "General Overview"
+
+# Create radio button with on_change callback
+def on_tab_change():
+    st.session_state.selected_tab = st.session_state.tab_radio
+    # Update query params when tab changes
+    st.query_params["tab"] = st.session_state.tab_radio
+
+tab = st.sidebar.radio(
+    "Go to", 
+    available_tabs,
+    key="tab_radio",
+    index=available_tabs.index(st.session_state.selected_tab),
+    on_change=on_tab_change
+)
 
 if data_frames:
     st.sidebar.success("CSV files loaded successfully.")
 
-# Sidebar Navigation
-st.sidebar.title("Navigation")
-tab = st.sidebar.radio(
-    "Go to", 
-    available_tabs,
-    index=available_tabs.index(st.session_state.active_tab)
-)
-
-# Update session state and query parameters when tab changes
-if tab != st.session_state.active_tab:
-    st.session_state.active_tab = tab
-    st.query_params["tab"] = tab
-
-# Route to the correct tab
-if tab == "General Overview":
+# Route to the correct tab based on session state
+if st.session_state.selected_tab == "General Overview":
     general_overview.display(data_frames)
-elif tab == "Circos":
+elif st.session_state.selected_tab == "Circos":
     circos.display()
-elif tab == "Trends":
+elif st.session_state.selected_tab == "Trends":
     trends.display(data_frames)
-elif tab == "Cards":
+elif st.session_state.selected_tab == "Cards":
     cards2.display(data_frames)
-elif tab == "By the Numbers":
+elif st.session_state.selected_tab == "By the Numbers":
     by_the_numbers.display(data_frames)
-elif tab == "Comparison":
+elif st.session_state.selected_tab == "Comparison":
     comparison.display(data_frames)
-elif tab == "Species Analysis":
+elif st.session_state.selected_tab == "Species Analysis":
     species_analysis.display(data_frames)

@@ -14,7 +14,12 @@ from utils.tooltip_title import display_title_with_tooltip
 def summary_bargraphs(data_frames):
     display_title_with_tooltip(
         "Metabolite Counts Bar Graph",
-        sample_image_filename="bythenumbers_metcount.png"
+        sample_image_filename="bythenumbers_metcount.png",
+        description_text=(
+            "Get the 15 genera that have the greatest number of unique metabolite data available for production, "
+            "utilization, resistance, and sensitivity for your specific selections (you can also tick the checkbox "
+            "to override the defaults, and choose your own genera you want to plot)."
+        )
     )
     
     # Widget commands (outside cached functions)

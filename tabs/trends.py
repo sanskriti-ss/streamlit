@@ -17,7 +17,8 @@ def display(data_frames):
     display_title_with_tooltip(
         "Parallel Coordinates Plot for Genera Trends",
         sample_image_filename="trends_5genera_comparison.png",
-        description_text="Compare up to 5 genera across Production, Utilization, Resistance, and Sensitivity."
+        description_text="Compare up to 5 genera across Production, Utilization, Resistance, and Sensitivity. "
+        "You'll get a parallel coordinates plot showing the number of species for each genus in each category."
     )
 
     ### Step 1: store selections so it stops re-running on every change
@@ -92,7 +93,7 @@ def display(data_frames):
     display_title_with_tooltip(
         "Comprehensive Sankey Diagram: Genus → Strains → Categories → Test Results",
         sample_image_filename="trends_sankey.png",
-        description_text="Visualize the complete flow: how a genus splits by strain status, then by metabolite categories (Production, Utilization, Resistance, Sensitivity), and finally by test results (Positive/Negative)."
+        description_text="Visualize the comparative data availability: how a genus splits by strain status, then by metabolite categories (Production, Utilization, Resistance, Sensitivity), and finally by test results (Positive/Negative)."
     )
 
     # Checkbox for filtering (default unchecked)

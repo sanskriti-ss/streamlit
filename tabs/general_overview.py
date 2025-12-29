@@ -16,6 +16,7 @@ def display(data_frames):
     display_title_with_tooltip(
         "General Overview",
         description_text="This section will show a summary of the antibiotic data."
+        "You can generate heatmaps for the highest density genera (either by number, or proportion) based on your selections."
     )
 
     # User choices
