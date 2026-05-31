@@ -12,6 +12,7 @@ from tabs import (
     by_the_numbers,
     comparison,
     species_analysis,
+    genome_bgc_evidence,
 )
 from utils.data_loader import load_data
 
@@ -25,6 +26,7 @@ available_tabs = [
     "By the Numbers",
     "Comparison",
     "Species Analysis",
+    "Genome and BGC Evidence",
 ]
 
 # Load CSV files from the data_files folder (do this before sidebar to avoid reloading)
@@ -77,3 +79,5 @@ elif st.session_state.selected_tab == "Comparison":
     comparison.display(data_frames)
 elif st.session_state.selected_tab == "Species Analysis":
     species_analysis.display(data_frames)
+elif st.session_state.selected_tab == "Genome and BGC Evidence":
+    genome_bgc_evidence.display(data_frames)
