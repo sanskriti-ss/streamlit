@@ -51,7 +51,8 @@ with st.sidebar:
     confidence_threshold = st.slider("Confidence threshold", 0.0, 1.0, 0.5, 0.05)
     aggregation = st.selectbox(
         "Bacteria aggregation",
-        ["species", "genus"],
+        ["genus", "species"],
+        index=0,
         help="Genus mode aggregates BacDive strains; species mode keeps top strains by breadth.",
     )
     max_entities = st.slider("Max bacterial entities", 50, 2000, 400, 50)

@@ -200,14 +200,13 @@ def _limit_entities_wide(
         util_df = util_df[util_df["entity_key"].isin(common)]
         return prod_df, util_df
 
+    mets = sorted(set(_metabolite_columns(prod_df)) & set(_metabolite_columns(util_df)))
     keys_prod = prod_df.apply(lambda r: _entity_key_from_row(r, "bacteria"), axis=1)
     keys_util = util_df.apply(lambda r: _entity_key_from_row(r, "bacteria"), axis=1)
     prod_df = prod_df.copy()
     util_df = util_df.copy()
     prod_df["_key"] = keys_prod
     util_df["_key"] = keys_util
-
-    mets = sorted(set(_metabolite_columns(prod_df)) & set(_metabolite_columns(util_df)))
     prod_sub = prod_df.drop_duplicates("_key").set_index("_key")
     util_sub = util_df.drop_duplicates("_key").set_index("_key")
     common = sorted(set(prod_sub.index) & set(util_sub.index))
