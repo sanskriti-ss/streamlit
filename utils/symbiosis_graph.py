@@ -12,6 +12,8 @@ import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 
+from utils.symbiosis_data import prettify_metabolite
+
 KINGDOM_COLORS = {
     "bacteria": "#4C78A8",
     "fungi": "#54A24B",
@@ -148,8 +150,8 @@ def compute_synergy_pairs(
             ba = int(directed[j, i])
             if ab <= 0 and ba <= 0:
                 continue
-            a_mets = [mets[k] for k in np.where((p[i] > 0) & (u[j] > 0))[0]]
-            b_mets = [mets[k] for k in np.where((p[j] > 0) & (u[i] > 0))[0]]
+            a_mets = [prettify_metabolite(mets[k]) for k in np.where((p[i] > 0) & (u[j] > 0))[0]]
+            b_mets = [prettify_metabolite(mets[k]) for k in np.where((p[j] > 0) & (u[i] > 0))[0]]
             pair_rows.append(
                 {
                     "species_a_key": keys[i],
@@ -234,7 +236,7 @@ def build_metabolite_focus_graph(
         return [], []
 
     nodes: Dict[str, GraphNode] = {
-        metabolite: GraphNode(metabolite, metabolite, "metabolite")
+        metabolite: GraphNode(metabolite, prettify_metabolite(metabolite), "metabolite")
     }
     edges: List[GraphEdge] = []
 
@@ -301,7 +303,7 @@ def build_species_focus_graph(
         met = str(row["metabolite"])
         activity = str(row["activity"])
         if met not in nodes:
-            nodes[met] = GraphNode(met, met, "metabolite", activity=activity)
+            nodes[met] = GraphNode(met, prettify_metabolite(met), "metabolite", activity=activity)
         if activity == "production":
             edges.append(GraphEdge(entity_key, met, 1, [met], "prod_link"))
         elif activity == "utilization":

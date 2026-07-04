@@ -159,7 +159,8 @@ def utilization_confidence(faa: Optional[Path]) -> Dict[str, float]:
     for sub, n in counts.items():
         if n > 0:
             # n=1 -> 0.5, n=2 -> 0.75, n=3 -> 0.875, saturating at cap
-            out[sub.capitalize()] = round(min(UTILIZATION_CAP, 1 - 0.5 ** n), 3)
+            # Keep the lowercase substrate key so names merge with other layers.
+            out[sub] = round(min(UTILIZATION_CAP, 1 - 0.5 ** n), 3)
     return out
 
 

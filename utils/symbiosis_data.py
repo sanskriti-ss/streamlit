@@ -83,8 +83,49 @@ def load_metabolite_aliases(path: Optional[Path]) -> Dict[str, str]:
 
 
 def normalize_metabolite(name: str, aliases: Dict[str, str]) -> str:
+    """Canonicalize a metabolite name to a lowercase key.
+
+    Aliases take precedence; otherwise fall back to a lowercased form so that
+    differently-cased spellings (e.g. ``Glucose`` vs ``glucose``) collapse to a
+    single canonical metabolite and merge across layers.
+    """
     key = str(name).strip()
-    return aliases.get(key.lower(), key)
+    return aliases.get(key.lower(), key.lower())
+
+
+# Display casing for canonical (lowercase) metabolite keys. Carbon sources stay
+# lowercase (matching the experimental convention); antiSMASH BGC classes are
+# restored to their readable form.
+METABOLITE_DISPLAY_OVERRIDES: Dict[str, str] = {
+    "nonribosomal peptide": "Nonribosomal peptide",
+    "polyketide": "Polyketide",
+    "polyketide (type i)": "Polyketide (type I)",
+    "polyketide (type ii)": "Polyketide (type II)",
+    "polyketide (type iii)": "Polyketide (type III)",
+    "polyketide (trans-at)": "Polyketide (trans-AT)",
+    "terpene": "Terpene",
+    "ripp": "RiPP",
+    "ripp (rre)": "RiPP (RRE)",
+    "lasso peptide": "Lasso peptide",
+    "proteusin (ripp)": "Proteusin (RiPP)",
+    "lanthipeptide": "Lanthipeptide",
+    "thiopeptide": "Thiopeptide",
+    "sactipeptide": "Sactipeptide",
+    "siderophore": "Siderophore",
+    "metallophore": "Metallophore",
+    "ectoine": "Ectoine",
+    "beta-lactone": "Beta-lactone",
+    "acyl-homoserine-lactone": "Acyl-homoserine-lactone",
+    "redox cofactor": "Redox cofactor",
+    "butyrolactone": "Butyrolactone",
+    "n-acetylglucosamine": "N-acetylglucosamine",
+}
+
+
+def prettify_metabolite(name: str) -> str:
+    """Display form for a canonical metabolite key (see overrides above)."""
+    key = str(name).strip()
+    return METABOLITE_DISPLAY_OVERRIDES.get(key.lower(), key)
 
 
 DEGRADATION_SUFFIX = "+degradation"
@@ -619,7 +660,7 @@ def load_layers(
 
 
 def list_metabolites(df: pd.DataFrame, query: str = "") -> List[str]:
-    mets = sorted(df["metabolite"].dropna().unique())
+    mets = sorted({prettify_metabolite(m) for m in df["metabolite"].dropna().unique()})
     if not query:
         return mets
     q = query.strip().lower()
