@@ -128,6 +128,34 @@ def prettify_metabolite(name: str) -> str:
     return METABOLITE_DISPLAY_OVERRIDES.get(key.lower(), key)
 
 
+def canonical_species_key(species: str, kingdom: str) -> str:
+    """Case-insensitive identity for one organism, shared across all layers."""
+    return f"{str(species).strip().lower()}|{str(kingdom).strip().lower()}"
+
+
+def species_display_name(names) -> str:
+    """Pick a clean binomial display name from same-organism spelling variants.
+
+    Prefers a variant that already begins with an uppercase genus (e.g.
+    ``Aspergillus niger`` over the slug-derived ``aspergillus niger``); if none
+    do, capitalizes the first letter. Avoids mangling strain designations like
+    ``Streptomyces sp. NPDC059396``.
+    """
+    variants = []
+    for n in names:
+        s = str(n).strip()
+        if s and s.lower() != "nan":
+            variants.append(s)
+    if not variants:
+        return ""
+    proper = [v for v in variants if v[:1].isupper()]
+    pool = proper if proper else variants
+    best = sorted(set(pool))[0]
+    if best[:1].islower():
+        best = best[:1].upper() + best[1:]
+    return best
+
+
 DEGRADATION_SUFFIX = "+degradation"
 
 
@@ -668,13 +696,28 @@ def list_metabolites(df: pd.DataFrame, query: str = "") -> List[str]:
 
 
 def list_species(df: pd.DataFrame, query: str = "") -> List[str]:
-    items = sorted(
-        {
-            f"{row['entity_key']} ({row['kingdom']})"
-            for _, row in df[["entity_key", "kingdom"]].drop_duplicates().iterrows()
-        }
+    """One entry per organism (canonical species × kingdom), not per entity_key.
+
+    Collapses the layer/accession/casing duplicates that ``entity_key`` would
+    otherwise produce, matching the species-level granularity of the synergy math.
+    """
+    if df.empty:
+        return []
+    work = df[["species", "kingdom"]].copy()
+    work["species"] = work["species"].astype(str)
+    work["kingdom"] = work["kingdom"].astype(str)
+    work["_sk"] = (
+        work["species"].str.strip().str.lower()
+        + "|"
+        + work["kingdom"].str.strip().str.lower()
     )
+    items = set()
+    for _, grp in work.groupby("_sk"):
+        display = species_display_name(grp["species"])
+        if display:
+            items.add(f"{display} ({grp['kingdom'].iloc[0]})")
+    result = sorted(items)
     if not query:
-        return items
+        return result
     q = query.strip().lower()
-    return [s for s in items if q in s.lower()]
+    return [s for s in result if q in s.lower()]

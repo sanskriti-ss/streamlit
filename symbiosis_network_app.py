@@ -21,6 +21,7 @@ from utils.symbiosis_graph import (
     build_species_focus_graph,
     compute_synergy_pairs,
     plot_network,
+    synergy_key,
 )
 
 st.set_page_config(page_title="Symbiosis Network", layout="wide")
@@ -138,18 +139,20 @@ else:
         st.info("Type a species name to search, then pick from the dropdown.")
         st.stop()
 
-    entity_key = selected_display.rsplit(" (", 1)[0]
+    name_part, _, kingdom_part = selected_display.rpartition(" (")
+    kingdom_part = kingdom_part.rstrip(")")
+    focal_key = synergy_key(name_part.strip(), kingdom_part.strip())
     nodes, edges = build_species_focus_graph(
         df,
-        entity_key,
+        focal_key,
         pairs_df,
         max_hops=max_hops,
     )
-    label = meta.get(entity_key, {}).get("species", entity_key)
+    label = meta.get(focal_key, {}).get("species", name_part.strip())
     fig = plot_network(
         nodes,
         edges,
-        center_id=entity_key,
+        center_id=focal_key,
         title=f"Species focus: {label}",
     )
 
@@ -172,7 +175,12 @@ with tab_pheno:
     if focus_mode == "Metabolite":
         view = df[df["metabolite"].str.lower() == selected_met.lower()]
     else:
-        view = df[df["entity_key"] == entity_key]
+        row_keys = (
+            df["species"].astype(str).str.strip().str.lower()
+            + "|"
+            + df["kingdom"].astype(str).str.strip().str.lower()
+        )
+        view = df[row_keys == focal_key]
     st.dataframe(
         view.sort_values(["activity", "confidence"], ascending=[True, False]),
         use_container_width=True,
@@ -189,6 +197,13 @@ with tab_help:
 - *Predicted fungi*: antiSMASH production + CAZyme utilization predictions.
 
 **Synergy** = bidirectional complementarity: metabolites species A produces that species B utilizes.
+
+**Degradation cross-feeding**: because BGC-based *production* (siderophores, terpenes, …)
+and carbon-source *utilization* (glucose, cellulose, …) use different vocabularies, we
+bridge them via extracellular degradation — a species that degrades a polymer (e.g.
+cellulose) is treated as *producing* the released monomers (glucose, cellobiose) that
+partners can consume. These inferred rows are tagged with a `+degradation` source layer.
+See `fungi_data/metabolite_bridges.csv`.
 
 **Fungi data not ready?** The app still runs with bacteria only. See `fungi_investigation/README.md`.
         """

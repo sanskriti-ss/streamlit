@@ -12,7 +12,7 @@ import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 
-from utils.symbiosis_data import prettify_metabolite
+from utils.symbiosis_data import prettify_metabolite, species_display_name
 
 KINGDOM_COLORS = {
     "bacteria": "#4C78A8",
@@ -100,13 +100,13 @@ def build_activity_matrices(
     work["_synergy_key"] = work.apply(synergy_key_from_row, axis=1)
 
     meta: Dict[str, dict] = {}
-    for _, row in work.drop_duplicates("_synergy_key").iterrows():
-        key = str(row["_synergy_key"])
-        meta[key] = {
-            "species": str(row["species"]),
-            "genus": str(row.get("genus", "")),
-            "kingdom": str(row["kingdom"]),
-            "source_layer": str(row["source_layer"]),
+    for key, grp in work.groupby("_synergy_key"):
+        row0 = grp.iloc[0]
+        meta[str(key)] = {
+            "species": species_display_name(grp["species"]),
+            "genus": str(row0.get("genus", "")),
+            "kingdom": str(row0["kingdom"]),
+            "source_layer": str(row0["source_layer"]),
         }
 
     prod = _binarize_phenotypes(work[work["activity"] == "production"], index_col="_synergy_key")
@@ -240,26 +240,24 @@ def build_metabolite_focus_graph(
     }
     edges: List[GraphEdge] = []
 
-    for _, row in sub.iterrows():
-        key = str(row["entity_key"])
-        activity = str(row["activity"])
-        if key not in nodes:
-            nodes[key] = GraphNode(
-                key,
-                str(row["species"]),
+    sub = sub.copy()
+    sub["_sk"] = sub.apply(synergy_key_from_row, axis=1)
+    for sk_val, grp in sub.groupby("_sk"):
+        sk_val = str(sk_val)
+        activities = set(grp["activity"].astype(str))
+        row0 = grp.iloc[0]
+        if sk_val not in nodes:
+            nodes[sk_val] = GraphNode(
+                sk_val,
+                species_display_name(grp["species"]),
                 "species",
-                kingdom=str(row["kingdom"]),
-                source_layer=str(row["source_layer"]),
-                activity=activity,
+                kingdom=str(row0["kingdom"]),
+                source_layer=str(row0["source_layer"]),
             )
-        if activity == "production":
-            edges.append(
-                GraphEdge(key, metabolite, 1, [metabolite], "prod_link")
-            )
-        elif activity == "utilization":
-            edges.append(
-                GraphEdge(metabolite, key, 1, [metabolite], "util_link")
-            )
+        if "production" in activities:
+            edges.append(GraphEdge(sk_val, metabolite, 1, [metabolite], "prod_link"))
+        if "utilization" in activities:
+            edges.append(GraphEdge(metabolite, sk_val, 1, [metabolite], "util_link"))
 
     adj: Dict[str, Set[str]] = defaultdict(set)
     for e in edges:
@@ -274,27 +272,30 @@ def build_metabolite_focus_graph(
 
 def build_species_focus_graph(
     df: pd.DataFrame,
-    entity_key: str,
+    focal_key: str,
     pairs_df: pd.DataFrame,
     *,
     max_hops: int = 2,
     max_partner_edges: int = 40,
 ) -> Tuple[List[GraphNode], List[GraphEdge]]:
-    """Center species; metabolite links + synergy partners."""
-    sub = df[df["entity_key"] == entity_key]
+    """Center one organism (by synergy key); metabolite links + synergy partners.
+
+    ``focal_key`` is a ``species|kingdom`` synergy key, so all layers/strains of the
+    organism are merged into a single focal node (matching the synergy matrices).
+    """
+    sk = df.apply(synergy_key_from_row, axis=1)
+    sub = df[sk == focal_key]
     if sub.empty:
         return [], []
 
-    focal_row = sub.iloc[0]
-    focal_species = str(focal_row["species"])
-    focal_synergy_key = synergy_key_from_row(focal_row)
+    row0 = sub.iloc[0]
     nodes: Dict[str, GraphNode] = {
-        entity_key: GraphNode(
-            entity_key,
-            focal_species,
+        focal_key: GraphNode(
+            focal_key,
+            species_display_name(sub["species"]),
             "species",
-            kingdom=str(focal_row["kingdom"]),
-            source_layer=str(focal_row["source_layer"]),
+            kingdom=str(row0["kingdom"]),
+            source_layer=str(row0["source_layer"]),
         )
     }
     edges: List[GraphEdge] = []
@@ -305,44 +306,28 @@ def build_species_focus_graph(
         if met not in nodes:
             nodes[met] = GraphNode(met, prettify_metabolite(met), "metabolite", activity=activity)
         if activity == "production":
-            edges.append(GraphEdge(entity_key, met, 1, [met], "prod_link"))
+            edges.append(GraphEdge(focal_key, met, 1, [met], "prod_link"))
         elif activity == "utilization":
-            edges.append(GraphEdge(met, entity_key, 1, [met], "util_link"))
+            edges.append(GraphEdge(met, focal_key, 1, [met], "util_link"))
 
     partner_edges = synergy_directed_edges(pairs_df, max_edges=max_partner_edges)
     for pe in partner_edges:
-        if pe.source != focal_synergy_key and pe.target != focal_synergy_key:
+        if focal_key not in (pe.source, pe.target):
             continue
         for nk in (pe.source, pe.target):
-            if nk == focal_synergy_key:
+            if nk == focal_key or nk in nodes:
                 continue
-            if nk not in nodes:
-                sk = df.apply(synergy_key_from_row, axis=1)
-                match = df[sk == nk]
-                if not match.empty:
-                    partner_key = str(match.iloc[0]["entity_key"])
-                    nodes[partner_key] = GraphNode(
-                        partner_key,
-                        str(match.iloc[0]["species"]),
-                        "species",
-                        kingdom=str(match.iloc[0]["kingdom"]),
-                        source_layer=str(match.iloc[0]["source_layer"]),
-                    )
-        # Remap synergy edge endpoints to display entity_keys where possible
-        src = entity_key if pe.source == focal_synergy_key else pe.source
-        dst = entity_key if pe.target == focal_synergy_key else pe.target
-        if pe.source != focal_synergy_key:
-            sk = df.apply(synergy_key_from_row, axis=1)
-            match = df[sk == pe.source]
+            match = df[sk == nk]
             if not match.empty:
-                src = str(match.iloc[0]["entity_key"])
-        if pe.target != focal_synergy_key:
-            sk = df.apply(synergy_key_from_row, axis=1)
-            match = df[sk == pe.target]
-            if not match.empty:
-                dst = str(match.iloc[0]["entity_key"])
+                nodes[nk] = GraphNode(
+                    nk,
+                    species_display_name(match["species"]),
+                    "species",
+                    kingdom=str(match.iloc[0]["kingdom"]),
+                    source_layer=str(match.iloc[0]["source_layer"]),
+                )
         edges.append(
-            GraphEdge(src, dst, pe.weight, pe.metabolites, pe.edge_type)
+            GraphEdge(pe.source, pe.target, pe.weight, pe.metabolites, pe.edge_type)
         )
 
     adj: Dict[str, Set[str]] = defaultdict(set)
@@ -350,7 +335,7 @@ def build_species_focus_graph(
         adj[e.source].add(e.target)
         adj[e.target].add(e.source)
 
-    keep = _bfs_neighbors(adj, entity_key, max_hops)
+    keep = _bfs_neighbors(adj, focal_key, max_hops)
     nodes = {k: v for k, v in nodes.items() if k in keep}
     edges = [e for e in edges if e.source in keep and e.target in keep]
     return list(nodes.values()), edges
