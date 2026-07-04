@@ -1,0 +1,41 @@
+# --- Large downloaded / generated data ---
+data/
+results/
+genome_investigation/cache/
+genome_investigation/results/
+fungi_data/raw/antismash_db/
+
+# Keep small fungi pipeline fixtures and FUNG-GROWTH samples
+!fungi_data/raw/fung_growth/
+!fungi_data/raw/antismash_mock/
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
+.eggs/
+dist/
+build/
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+
+# --- Local environment / IDE ---
+.DS_Store
+.vscode/
+.mplconfig/
+.playwright-mcp/
+
+# --- Logs and experiment run outputs ---
+logs/
+experiments_results/outputs_*/
+experiments_results/genus_phylum_cache.csv
+experiments_results/__pycache__/
