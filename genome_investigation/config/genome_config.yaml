@@ -1,0 +1,12 @@
+# Genome investigation defaults (Phase 1–1c)
+enable_antismash: false
+
+bacdive_api_base: https://api.bacdive.dsmz.de
+ncbi_datasets_api_base: https://api.ncbi.nlm.nih.gov/datasets/v2alpha
+
+cache_dir: genome_investigation/cache/api
+rate_limit_seconds: 0.2
+min_confidence_default: 0.5
+
+genome_output_dir: data/genomes
+antismash_output_dir: results/antismash

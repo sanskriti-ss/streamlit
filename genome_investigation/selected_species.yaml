@@ -1,0 +1,26 @@
+# Selected species for deeper genome download and optional antiSMASH.
+# Full-genome analysis never runs across the entire BacDive catalog by default.
+
+enable_antismash: false
+
+# Optional explicit BacDive IDs (strings or integers)
+bacdive_ids: []
+
+categories:
+  - name: Metabolic generalists
+    species:
+      - Cohnella algarum
+      - Clostridium cellulovorans
+      - Caldicellulosiruptor owensensis
+
+  - name: Metabolic specialists
+    species:
+      - Hydrogenobacter thermophilus
+      - Ideonella dechloratans
+      - Holdemania filiformis
+
+  - name: Resistance outliers
+    species:
+      - Bacillus cereus
+      - Micrococcus luteus
+      - Acetomicrobium thermoterrenum

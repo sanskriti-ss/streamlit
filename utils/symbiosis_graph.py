@@ -79,14 +79,22 @@ def _binarize_phenotypes(df: pd.DataFrame, *, index_col: str = "entity_key") -> 
 def _align_activity_matrices(
     prod: pd.DataFrame, util: pd.DataFrame
 ) -> Tuple[pd.DataFrame, pd.DataFrame]:
-    """Restrict prod/util to shared entity keys and metabolite columns."""
+    """Align prod/util to shared metabolite columns and all entity keys.
+
+    Entity keys use the **union** of production and utilization indices so
+    utilizers without production evidence (e.g. experimental fungi) and
+    producers without utilization tests still participate in synergy scoring.
+    Missing matrix entries are zero-filled.
+    """
     if prod.empty or util.empty:
         return prod, util
     shared_mets = sorted(set(prod.columns) & set(util.columns))
-    shared_keys = sorted(set(prod.index) & set(util.index))
-    if not shared_mets or not shared_keys:
+    all_keys = sorted(set(prod.index) | set(util.index))
+    if not shared_mets or not all_keys:
         return prod.iloc[0:0], util.iloc[0:0]
-    return prod.loc[shared_keys, shared_mets], util.loc[shared_keys, shared_mets]
+    prod_aligned = prod.reindex(index=all_keys, columns=shared_mets, fill_value=0)
+    util_aligned = util.reindex(index=all_keys, columns=shared_mets, fill_value=0)
+    return (prod_aligned > 0).astype(np.int8), (util_aligned > 0).astype(np.int8)
 
 
 def build_activity_matrices(

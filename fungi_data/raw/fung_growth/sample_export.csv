@@ -1,0 +1,8 @@
+species,genus,substrate,growth_positive,genome_accession
+Aspergillus niger,Aspergillus,D-glucose,1,GCA_000002395.2
+Aspergillus niger,Aspergillus,cellulose,1,GCA_000002395.2
+Aspergillus niger,Aspergillus,D-xylose,1,GCA_000002395.2
+Trichoderma reesei,Trichoderma,cellulose,1,GCA_000167675.2
+Trichoderma reesei,Trichoderma,D-glucose,1,GCA_000167675.2
+Saccharomyces cerevisiae,Saccharomyces,D-glucose,1,GCA_000146045.2
+Saccharomyces cerevisiae,Saccharomyces,sucrose,1,GCA_000146045.2

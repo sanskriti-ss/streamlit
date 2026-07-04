@@ -1,0 +1,16 @@
+# Reference fungal genomes for predicted production/utilization layers.
+# FUNG-GROWTH experimental data is populated separately (manual export).
+
+species:
+  - species: Aspergillus niger
+    accession: GCF_000002855.4
+  - species: Trichoderma reesei
+    accession: GCF_000167675.1
+  - species: Saccharomyces cerevisiae
+    accession: GCF_000146045.2
+  - species: Penicillium rubens
+    accession: GCF_028828025.1
+  - species: Neurospora crassa
+    accession: GCF_000182925.2
+  - species: Schizophyllum commune
+    accession: GCF_000143185.2

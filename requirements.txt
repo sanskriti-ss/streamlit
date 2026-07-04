@@ -4,6 +4,7 @@ pandas-datareader
 matplotlib
 seaborn
 plotly
+bokeh
 
 scipy
 statsmodels
@@ -12,3 +13,5 @@ streamlit
 streamlit-option-menu
 tensorflow
 kaleido
+pyyaml
+pytest

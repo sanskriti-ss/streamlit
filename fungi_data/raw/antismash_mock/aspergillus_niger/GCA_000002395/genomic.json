@@ -1,0 +1,19 @@
+{
+  "version": "7.0.0",
+  "records": [
+    {
+      "areas": [
+        {
+          "products": [
+            {"product_class": "NRPS"},
+            {"product_class": "PKS"},
+            {"product_class": "terpene"}
+          ],
+          "knownclusterblast": {
+            "cluster-1": {"similarity": 85}
+          }
+        }
+      ]
+    }
+  ]
+}

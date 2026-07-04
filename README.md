@@ -36,6 +36,69 @@ More important is the generated shared and synergy summary, which shows the prod
 (Note that it is very slow to run, currently. Working on it!)
 
 
+## Genome investigation (optional)
+
+An optional pipeline under `genome_investigation/` enriches strains with genome accessions (BacDive → NCBI), supports **selected-only** genome download, optional antiSMASH, and ranked follow-up candidates. It does **not** modify Step1–Step3 CSV generation or existing tabs unless you run the new tools.
+
+- Streamlit tab: **Genome and BGC Evidence**
+- Details: [genome_investigation/README.md](genome_investigation/README.md)
+
+### Optional antiSMASH biosynthetic gene cluster analysis
+
+antiSMASH is **off by default** (`enable_antismash: false` in `genome_investigation/config/genome_config.yaml`). It runs only for species listed in `genome_investigation/selected_species.yaml` after genomes are downloaded to `data/genomes/`.
+
+1. Install antiSMASH via conda (recommended for Apple Silicon):
+   ```bash
+   conda create -n antismash_env -c bioconda -c conda-forge antismash
+   conda activate antismash_env
+   pip install nrpys  # builds ARM-native Rust extension
+   download-antismash-databases
+   ```
+   The pipeline auto-discovers the binary at `~/miniconda3/envs/antismash_env/bin/antismash`.
+2. Download selected genomes: `python -m genome_investigation.genome_download --download-genomes ...`
+3. Run or import results:
+
+```bash
+# Run locally (requires antiSMASH on PATH)
+python -m genome_investigation.antismash_runner --run-antismash
+
+# Or parse results produced elsewhere
+python -m genome_investigation.antismash_runner --parse-antismash-only \
+  --antismash-output-dir results/antismash
+```
+
+Outputs: `results/antismash/{species_slug}/{accession}/` and `genome_investigation/results/antismash_summary.csv`. Prefer GenBank/GBFF input; FASTA is allowed but logged as lower-quality annotation input. Extra antiSMASH flags are **not** passed unless you supply `--antismash-extra-args`.
+
+### Automated genomic follow-up (one command)
+
+Runs enrichment, NCBI download, antiSMASH (confidence ≥ 1.0), AMRFinder (*B. cereus* / *M. luteus*), BacDive metabolite export, gene search, and figures:
+
+```bash
+python -m genome_investigation.genome_followup_pipeline
+```
+
+Requires optional CLIs: NCBI `datasets`, `antismash`, `amrfinder`. Results: `genome_investigation/results/genomic_followup/` (see [genome_investigation/README.md](genome_investigation/README.md)).
+
+## Symbiosis network (bacteria + fungi)
+
+A separate Streamlit app explores cross-kingdom production ↔ utilization synergy networks. It works with partial data (bacteria-only is fine).
+
+```bash
+streamlit run symbiosis_network_app.py
+```
+
+- Configure data paths in [`symbiosis_data_paths.yaml`](symbiosis_data_paths.yaml)
+- Fungi pipelines: [`fungi_investigation/README.md`](fungi_investigation/README.md)
+
+Layers (multi-select in the app):
+
+| Layer | Source |
+|-------|--------|
+| Experimental bacteria | BacDive Step3 (`species_data/step3_met_*`) |
+| Predicted bacteria | `genome_investigation/results/genomic_followup/phenotype_confidence.csv` |
+| Experimental fungi | FUNG-GROWTH → `fungi_data/experimental/fungi_phenotypes_long.csv` |
+| Predicted fungi | antiSMASH + CAZyme → `fungi_data/predicted/` |
+
 # If you want to make local changes
 make sure requirements are installed :)))
 to run, do streamlit run app.py

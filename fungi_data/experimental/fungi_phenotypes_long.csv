@@ -1,0 +1,8 @@
+entity_id,entity_key,kingdom,species,genus,activity,metabolite,confidence,observed,source,genome_accession
+FG_aspergillus_niger_0,FG_aspergillus_niger_0 | Aspergillus niger,fungi,Aspergillus niger,Aspergillus,utilization,glucose,1.0,True,fung_growth,GCA_000002395.2
+FG_aspergillus_niger_1,FG_aspergillus_niger_1 | Aspergillus niger,fungi,Aspergillus niger,Aspergillus,utilization,cellulose,1.0,True,fung_growth,GCA_000002395.2
+FG_aspergillus_niger_2,FG_aspergillus_niger_2 | Aspergillus niger,fungi,Aspergillus niger,Aspergillus,utilization,xylose,1.0,True,fung_growth,GCA_000002395.2
+FG_trichoderma_reesei_3,FG_trichoderma_reesei_3 | Trichoderma reesei,fungi,Trichoderma reesei,Trichoderma,utilization,cellulose,1.0,True,fung_growth,GCA_000167675.2
+FG_trichoderma_reesei_4,FG_trichoderma_reesei_4 | Trichoderma reesei,fungi,Trichoderma reesei,Trichoderma,utilization,glucose,1.0,True,fung_growth,GCA_000167675.2
+FG_saccharomyces_cerevisiae_5,FG_saccharomyces_cerevisiae_5 | Saccharomyces cerevisiae,fungi,Saccharomyces cerevisiae,Saccharomyces,utilization,glucose,1.0,True,fung_growth,GCA_000146045.2
+FG_saccharomyces_cerevisiae_6,FG_saccharomyces_cerevisiae_6 | Saccharomyces cerevisiae,fungi,Saccharomyces cerevisiae,Saccharomyces,utilization,sucrose,1.0,True,fung_growth,GCA_000146045.2

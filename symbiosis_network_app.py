@@ -197,6 +197,9 @@ with tab_help:
 - *Predicted fungi*: antiSMASH production + CAZyme utilization predictions.
 
 **Synergy** = bidirectional complementarity: metabolites species A produces that species B utilizes.
+Organisms with only production *or* only utilization evidence still participate (e.g.
+experimental fungi that only show carbon-source utilization can receive metabolites
+produced by bacteria).
 
 **Degradation cross-feeding**: because BGC-based *production* (siderophores, terpenes, …)
 and carbon-source *utilization* (glucose, cellulose, …) use different vocabularies, we

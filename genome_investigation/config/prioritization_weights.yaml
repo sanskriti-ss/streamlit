@@ -1,0 +1,10 @@
+# Tunable weights for ranked_species_candidates.csv (Phase 1d)
+
+outlier_z_weight: 2.0
+genome_confidence_weight: 1.5
+bgc_count_weight: 0.4
+unusual_bgc_bonus: 1.0
+resistance_unexplained_penalty: 1.2
+low_confidence_genome_penalty: 1.0
+# Keep at 0 so metabolic specialists are not penalized for low BGC unless you change policy
+specialist_bgc_penalty: 0.0
