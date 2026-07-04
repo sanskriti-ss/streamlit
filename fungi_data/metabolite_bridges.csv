@@ -1,0 +1,20 @@
+polymer,monomer,release_confidence
+cellulose,glucose,0.7
+cellulose,cellobiose,0.8
+cellobiose,glucose,0.85
+xylan,xylose,0.7
+starch,glucose,0.75
+starch,maltose,0.75
+maltose,glucose,0.85
+pectin,galacturonic acid,0.7
+mannan,mannose,0.7
+chitin,N-acetylglucosamine,0.7
+lactose,glucose,0.85
+lactose,galactose,0.85
+sucrose,glucose,0.85
+sucrose,fructose,0.85
+inulin,fructose,0.75
+raffinose,fructose,0.7
+raffinose,galactose,0.7
+melibiose,galactose,0.7
+melibiose,glucose,0.7
