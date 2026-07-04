@@ -5,6 +5,7 @@ Load and merge cross-kingdom phenotype layers for the symbiosis network app.
 from __future__ import annotations
 
 import zipfile
+from collections import defaultdict
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, List, Optional, Set, Tuple
@@ -84,6 +85,93 @@ def load_metabolite_aliases(path: Optional[Path]) -> Dict[str, str]:
 def normalize_metabolite(name: str, aliases: Dict[str, str]) -> str:
     key = str(name).strip()
     return aliases.get(key.lower(), key)
+
+
+DEGRADATION_SUFFIX = "+degradation"
+
+
+def load_metabolite_bridges(path: Optional[Path]) -> List[Tuple[str, str, float]]:
+    """Load polymer→monomer degradation bridges.
+
+    Each row means: a species that *utilizes* (extracellularly degrades) ``polymer``
+    releases ``monomer`` into the shared environment — i.e. effectively *produces* it
+    for cross-feeding partners. ``release_confidence`` scales the utilization
+    confidence when deriving the inferred production row.
+    """
+    if not path or not Path(path).exists():
+        return []
+    df = pd.read_csv(path)
+    if df.empty or "polymer" not in df.columns or "monomer" not in df.columns:
+        return []
+    out: List[Tuple[str, str, float]] = []
+    for _, r in df.iterrows():
+        polymer = str(r.get("polymer", "")).strip()
+        monomer = str(r.get("monomer", "")).strip()
+        if not polymer or not monomer:
+            continue
+        try:
+            factor = float(r.get("release_confidence", 0.7))
+        except (TypeError, ValueError):
+            factor = 0.7
+        factor = min(max(factor, 0.0), 1.0)
+        out.append((polymer, monomer, factor))
+    return out
+
+
+def apply_degradation_bridges(
+    df: pd.DataFrame,
+    bridges: List[Tuple[str, str, float]],
+    aliases: Dict[str, str],
+) -> pd.DataFrame:
+    """Derive production rows for monomers released by polymer degradation.
+
+    Bridges the production/utilization ontology gap: BGC-based production and
+    carbon-source utilization otherwise share no vocabulary, so synergy is always
+    zero. Extracellular breakdown of a polymer (a utilization capability) yields
+    monomers partners can consume, so we emit inferred production rows in the same
+    carbon-source vocabulary. Original rows are preserved.
+    """
+    if df.empty or not bridges:
+        return df
+
+    bridge_map: Dict[str, List[Tuple[str, float]]] = defaultdict(list)
+    for polymer, monomer, factor in bridges:
+        bridge_map[polymer.strip().lower()].append((monomer, factor))
+
+    util = df[df["activity"] == "utilization"]
+    if util.empty:
+        return df
+
+    new_rows: List[dict] = []
+    for _, r in util.iterrows():
+        met_key = str(r.get("metabolite", "")).strip().lower()
+        targets = bridge_map.get(met_key)
+        if not targets:
+            continue
+        base_conf = float(r.get("confidence", 1.0))
+        for monomer, factor in targets:
+            new_rows.append(
+                {
+                    "entity_key": r.get("entity_key"),
+                    "kingdom": r.get("kingdom"),
+                    "species": r.get("species"),
+                    "genus": r.get("genus", ""),
+                    "activity": "production",
+                    "metabolite": normalize_metabolite(monomer, aliases),
+                    "confidence": round(base_conf * factor, 3),
+                    "observed": False,
+                    "source_layer": f"{r.get('source_layer', '')}{DEGRADATION_SUFFIX}",
+                }
+            )
+
+    if not new_rows:
+        return df
+
+    derived = pd.DataFrame(new_rows, columns=UNIFIED_COLUMNS)
+    derived = derived.sort_values("confidence", ascending=False).drop_duplicates(
+        subset=["entity_key", "activity", "metabolite", "source_layer"], keep="first"
+    )
+    return pd.concat([df, derived], ignore_index=True)
 
 
 def _read_csv_or_zip(path: Path, *, nrows: Optional[int] = None) -> pd.DataFrame:
@@ -518,6 +606,11 @@ def load_layers(
         return pd.DataFrame(columns=UNIFIED_COLUMNS), statuses
 
     merged = pd.concat(frames, ignore_index=True)
+
+    bridge_rel = config.get("metabolite_bridges")
+    bridges = load_metabolite_bridges(REPO_ROOT / bridge_rel if bridge_rel else None)
+    merged = apply_degradation_bridges(merged, bridges, aliases)
+
     merged = merged[merged["confidence"] >= confidence_threshold].copy()
     merged = merged.drop_duplicates(
         subset=["entity_key", "activity", "metabolite", "source_layer"], keep="first"

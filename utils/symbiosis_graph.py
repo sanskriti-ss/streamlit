@@ -421,7 +421,8 @@ def plot_network(
             texts.append(f"Metabolite: {nd.label}")
         else:
             colors.append(KINGDOM_COLORS.get(nd.kingdom, "#666666"))
-            symbols.append(LAYER_SHAPES.get(nd.source_layer, "circle"))
+            base_layer = nd.source_layer.split("+", 1)[0]
+            symbols.append(LAYER_SHAPES.get(base_layer, "circle"))
             sizes.append(18 if nd.node_id == center_id else 12)
             texts.append(
                 f"{nd.label}<br>kingdom={nd.kingdom}<br>layer={nd.source_layer}"

@@ -1,0 +1,18 @@
+# Paths for the symbiosis network app. All keys are optional; missing files are skipped.
+
+bacteria_experimental:
+  production: species_data/step3_met_prod_exploded.csv.zip
+  utilization: species_data/step3_met_util_exploded.csv.zip
+
+bacteria_predicted: genome_investigation/results/genomic_followup/phenotype_confidence.csv
+
+fungi_experimental: fungi_data/experimental/fungi_phenotypes_long.csv
+
+fungi_predicted_production: fungi_data/predicted/fungi_phenotype_confidence.csv
+fungi_predicted_utilization: fungi_data/predicted/fungi_utilization_confidence.csv
+
+metabolite_aliases: fungi_data/metabolite_aliases.csv
+
+# Polymer→monomer degradation bridges: utilizing a polymer releases monomers
+# (inferred production), bridging the production/utilization ontology gap.
+metabolite_bridges: fungi_data/metabolite_bridges.csv
