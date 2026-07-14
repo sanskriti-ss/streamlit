@@ -46,6 +46,24 @@ def _clear_outdir_files(out_dir: Path) -> None:
         if leftover.is_file():
             leftover.unlink()
 
+
+def _normalize_antismash_json(out_dir: Path) -> None:
+    """Ensure ingest can find genomic.json when input was *.dedup.gbff."""
+    canonical = out_dir / "genomic.json"
+    if canonical.exists():
+        return
+    candidates = sorted(out_dir.glob("*.json"))
+    # Prefer files that look like the primary antiSMASH result.
+    preferred = [
+        p
+        for p in candidates
+        if "dedup" in p.name.lower() or p.name.lower().startswith("genomic")
+    ]
+    src = (preferred or candidates)[0] if (preferred or candidates) else None
+    if src is None:
+        return
+    src.rename(canonical)
+
 REPO_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_LIST = Path(__file__).resolve().parent / "selected_fungi.yaml"
 DEFAULT_GENOMES = REPO_ROOT / "data" / "genomes_fungi"
@@ -136,8 +154,15 @@ def run_antismash_on_fungi(
                 )
 
         if success:
-            ok += 1
-            print(f"[ok] antiSMASH {species}: {msg}")
+            _normalize_antismash_json(out_dir)
+            if (out_dir / "genomic.json").exists():
+                ok += 1
+                print(f"[ok] antiSMASH {species}: {msg}")
+            else:
+                fail += 1
+                print(
+                    f"[warn] antiSMASH {species}: finished but genomic.json missing in {out_dir}"
+                )
         else:
             fail += 1
             print(f"[warn] antiSMASH {species}: {msg}")
