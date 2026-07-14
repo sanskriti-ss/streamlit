@@ -129,9 +129,11 @@ def display(_data_frames=None) -> None:
             "Max bacterial entities",
             50,
             2000,
-            400,
+            100,
             50,
             key="symbiosis_max_entities",
+            help="Lower = faster loads. Genus aggregation still keeps all genera "
+            "that pass the breadth filter when at genus level.",
         )
         min_edge_weight = st.slider(
             "Min synergy edge weight",
@@ -146,6 +148,13 @@ def display(_data_frames=None) -> None:
             3,
             2,
             key="symbiosis_max_hops",
+        )
+        cross_kingdom_only = st.checkbox(
+            "Show only cross-kingdom pairs",
+            value=True,
+            key="symbiosis_cross_only",
+            help="In the Synergy pairs table, hide same-kingdom links "
+            "(bacteria–bacteria or fungi–fungi).",
         )
 
         st.header("Layer status")
@@ -174,13 +183,26 @@ def display(_data_frames=None) -> None:
         return
 
     kingdoms = sorted(df["kingdom"].dropna().unique())
-    n_species = df[["species", "kingdom"]].drop_duplicates().shape[0]
+    org_keys = df[["species", "kingdom"]].drop_duplicates()
+    n_species = len(org_keys)
+    n_bac = int((org_keys["kingdom"].astype(str) == "bacteria").sum())
+    n_fungi = int((org_keys["kingdom"].astype(str) == "fungi").sum())
     n_mets = df["metabolite"].nunique()
     m1, m2, m3, m4 = st.columns(4)
     m1.metric("Kingdoms", ", ".join(kingdoms) if kingdoms else "—")
     m2.metric("Organisms", f"{n_species:,}")
     m3.metric("Metabolites", f"{n_mets:,}")
     m4.metric("Phenotype rows", f"{len(df):,}")
+    st.caption(
+        f"Loaded **{n_bac:,}** bacterial and **{n_fungi:,}** fungal organisms "
+        f"at current layers/filters"
+        + (
+            " (fungal production from antiSMASH may still be catching up — "
+            "utilization predictions are already included)."
+            if n_fungi > 0
+            else ""
+        )
+    )
 
     prod_mat, util_mat, meta = build_activity_matrices(df)
     pairs_df, _ = compute_synergy_pairs(
@@ -280,12 +302,24 @@ def display(_data_frames=None) -> None:
                 "or adding layers / switching kingdom scope."
             )
         else:
-            show = pairs_df.head(50)
-            st.dataframe(show, use_container_width=True, hide_index=True)
-            st.caption(
-                f"Showing top {len(show)} of {len(pairs_df):,} pairs "
-                f"(species A produces metabolites species B utilizes, and vice versa)."
-            )
+            table = pairs_df
+            if cross_kingdom_only and {"kingdom_a", "kingdom_b"} <= set(table.columns):
+                table = table[
+                    table["kingdom_a"].astype(str) != table["kingdom_b"].astype(str)
+                ]
+            if table.empty:
+                st.info(
+                    "No cross-kingdom pairs at current filters. "
+                    "Unset “Show only cross-kingdom pairs” or add fungi + bacteria layers."
+                )
+            else:
+                show = table.head(50)
+                st.dataframe(show, use_container_width=True, hide_index=True)
+                scope_note = "cross-kingdom " if cross_kingdom_only else ""
+                st.caption(
+                    f"Showing top {len(show)} of {len(table):,} {scope_note}pairs "
+                    f"(species A produces metabolites species B utilizes, and vice versa)."
+                )
 
     with tab_pheno:
         if focus_mode == "Metabolite" and selected_met:
