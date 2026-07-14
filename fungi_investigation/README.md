@@ -38,10 +38,11 @@ Genomes: `data/genomes_fungi/` (protein FASTA + genomic FASTA + GBFF)
 antiSMASH output: `results/antismash_fungi/`
 
 If a GenBank annotation has duplicate CDS features (seen with *Neurospora crassa*),
-the pipeline retries antiSMASH on the genomic FASTA with `--taxon fungi`.
+the pipeline writes a CDS-deduped GBFF and retries antiSMASH (fungal antiSMASH
+needs gene annotations — plain FASTA is not enough).
 
-`FUNG-GROWTH` bulk experimental data is separate (https://www.fung-growth.org/) —
-when that site is down, predicted layers still grow via this genome pipeline.
+`FUNG-GROWTH` bulk experimental data is separate ([fung-growth.org](https://www.fung-growth.org/)) —
+when that site is down, grow coverage via this genome pipeline instead.
 
 ## Predicted — production (antiSMASH only)
 

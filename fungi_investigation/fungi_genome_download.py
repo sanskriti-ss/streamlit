@@ -88,32 +88,46 @@ def download_genome(accession: str, dest_dir: Path, *, force: bool = False) -> t
 
     zip_path = dest_dir / "ncbi_dataset.zip"
     url = NCBI_DOWNLOAD.format(acc=quote(accession, safe=""))
-    req = Request(url, headers={"accept": "application/zip"})
-    try:
-        with urlopen(req, timeout=600) as resp:
-            data = resp.read()
-    except OSError as exc:
-        return False, f"download failed: {exc}"
+    last_err = ""
+    data = b""
+    for attempt in range(1, 5):
+        req = Request(url, headers={"accept": "application/zip"})
+        try:
+            with urlopen(req, timeout=900) as resp:
+                data = resp.read()
+        except Exception as exc:  # IncompleteRead, timeout, HTTP errors
+            last_err = str(exc)
+            print(f"[retry] {accession} attempt {attempt}/4 failed: {last_err[:160]}")
+            continue
 
-    if len(data) < 10_000:
-        return False, f"download too small ({len(data)} bytes); accession may be invalid"
+        if len(data) < 10_000:
+            last_err = f"download too small ({len(data)} bytes); accession may be invalid"
+            print(f"[retry] {accession} attempt {attempt}/4: {last_err}")
+            continue
 
-    zip_path.write_bytes(data)
-    with zipfile.ZipFile(zip_path, "r") as zf:
-        zf.extractall(dest_dir)
+        zip_path.write_bytes(data)
+        try:
+            with zipfile.ZipFile(zip_path, "r") as zf:
+                zf.extractall(dest_dir)
+        except zipfile.BadZipFile as exc:
+            last_err = f"bad zip: {exc}"
+            print(f"[retry] {accession} attempt {attempt}/4: {last_err}")
+            continue
 
-    meta = {
-        "accession": accession,
-        "source": "ncbi_datasets_v2_api",
-        "zip": str(zip_path),
-        "bytes": len(data),
-        "includes_genome_fasta": True,
-        "includes_protein_fasta": True,
-        "includes_gbff": True,
-        "includes_gff": True,
-    }
-    meta_path.write_text(json.dumps(meta, indent=2), encoding="utf-8")
-    return True, "downloaded via NCBI Datasets API"
+        meta = {
+            "accession": accession,
+            "source": "ncbi_datasets_v2_api",
+            "zip": str(zip_path),
+            "bytes": len(data),
+            "includes_genome_fasta": True,
+            "includes_protein_fasta": True,
+            "includes_gbff": True,
+            "includes_gff": True,
+        }
+        meta_path.write_text(json.dumps(meta, indent=2), encoding="utf-8")
+        return True, "downloaded via NCBI Datasets API"
+
+    return False, f"download failed after retries: {last_err}"
 
 
 def main(argv: Optional[List[str]] = None) -> int:

@@ -228,12 +228,13 @@ def run_antismash(
 
     out_dir.mkdir(parents=True, exist_ok=True)
     cmd = ["antismash", str(input_path), "--output-dir", str(out_dir)]
+    extra = list(extra_args or [])
     if input_type == "genbank":
         cmd.extend(["--genefinding-tool", "none"])
-    elif input_type == "fasta":
+    elif input_type == "fasta" and "--taxon" not in extra:
         cmd.extend(["--taxon", "bacteria"])
-    if extra_args:
-        cmd.extend(extra_args)
+    if extra:
+        cmd.extend(extra)
 
     binary = _antismash_binary() or "antismash"
     cmd[0] = binary

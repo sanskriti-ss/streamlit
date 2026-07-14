@@ -19,6 +19,7 @@ from typing import List, Optional
 
 ANTISMASH_ENV_BIN = Path.home() / "miniconda3" / "envs" / "antismash_env" / "bin"
 
+from fungi_investigation.gbff_dedupe_cds import write_deduped_gbff
 from genome_investigation.antismash_runner import (
     antismash_installed,
     find_input_genbank,
@@ -27,27 +28,21 @@ from genome_investigation.antismash_runner import (
 from genome_investigation.io_utils import load_yaml, species_slug
 
 
-def _find_genome_fasta(genome_dir: Path) -> Optional[Path]:
-    for pattern in ("*.fna", "*.fasta", "*.fa"):
-        hits = sorted(genome_dir.rglob(pattern))
-        # Prefer genomic.fna over misc assembly files when present.
-        preferred = [p for p in hits if "genomic" in p.name.lower()]
-        if preferred:
-            return preferred[0]
-        if hits:
-            return hits[0]
-    return None
-
-
-def _should_retry_with_fasta(message: str) -> bool:
+def _should_retry_dedupe_gbff(message: str) -> bool:
     blob = (message or "").lower()
     markers = (
         "multiple cds features have the same location",
         "duplicate cds",
-        "invalid location",
-        "could not parse",
     )
     return any(m in blob for m in markers)
+
+
+def _clear_outdir_files(out_dir: Path) -> None:
+    if not out_dir.exists():
+        return
+    for leftover in out_dir.glob("*"):
+        if leftover.is_file():
+            leftover.unlink()
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_LIST = Path(__file__).resolve().parent / "selected_fungi.yaml"
@@ -106,28 +101,24 @@ def run_antismash_on_fungi(
             ok += 1
             continue
 
-        # Fungal antiSMASH always declares taxon=fungi (extra_args override defaults
-        # for FASTA; GBFF uses embedded annotations with --genefinding-tool none).
+        # Fungal antiSMASH requires annotated GenBank (no fungal gene finder for FASTA).
         extra = ["--taxon", "fungi"]
         success, msg = run_antismash(inp, out_dir, input_type=itype, extra_args=extra)
-        if (not success) and itype == "genbank" and _should_retry_with_fasta(msg):
-            fasta = _find_genome_fasta(gdir)
-            if fasta is not None:
+        if (not success) and itype == "genbank" and _should_retry_dedupe_gbff(msg):
+            dedup_path = inp.with_suffix(inp.suffix + ".dedup.gbff")
+            try:
+                removed = write_deduped_gbff(inp, dedup_path)
+            except OSError as exc:
+                print(f"[warn] {species}: could not write deduped GBFF: {exc}")
+                removed = -1
+            if removed >= 0:
                 print(
-                    f"[retry] {species}: GBFF failed ({msg.splitlines()[0][:120]}); "
-                    f"retrying with FASTA {fasta.name}"
+                    f"[retry] {species}: GBFF had duplicate CDS "
+                    f"(removed {removed}); retrying with {dedup_path.name}"
                 )
-                # Clear partial failed output so antiSMASH can rewrite the directory.
-                for leftover in out_dir.glob("*"):
-                    if leftover.is_file():
-                        leftover.unlink()
+                _clear_outdir_files(out_dir)
                 success, msg = run_antismash(
-                    fasta, out_dir, input_type="fasta", extra_args=extra
-                )
-            else:
-                print(
-                    f"[warn] {species}: GBFF failed and no genomic FASTA found "
-                    "(re-run fungi_genome_download to fetch GENOME_FASTA)"
+                    dedup_path, out_dir, input_type="genbank", extra_args=extra
                 )
 
         if success:
