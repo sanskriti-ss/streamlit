@@ -25,6 +25,7 @@ DEFAULT_OUT = REPO_ROOT / "data" / "genomes_fungi"
 NCBI_DOWNLOAD = (
     "https://api.ncbi.nlm.nih.gov/datasets/v2/genome/accession/{acc}/download"
     "?include_annotation_type=PROT_FASTA"
+    "&include_annotation_type=GENOME_FASTA"
     "&include_annotation_type=GENOME_GBFF"
     "&include_annotation_type=GENOME_GFF"
     "&hydrated=FULLY_HYDRATED"
@@ -63,12 +64,26 @@ def resolve_accession(species: str) -> str:
     return str(report.get("accession") or report.get("current_accession") or "").strip()
 
 
-def download_genome(accession: str, dest_dir: Path) -> tuple[bool, str]:
+def _has_protein_and_sequence(dest_dir: Path) -> bool:
+    """Require protein FASTA plus nucleotide sequence (FASTA or GBFF)."""
+    has_faa = any(dest_dir.rglob("*.faa"))
+    has_nt = any(dest_dir.rglob("*.fna")) or any(dest_dir.rglob("*.gbff"))
+    return has_faa and has_nt
+
+
+def download_genome(accession: str, dest_dir: Path, *, force: bool = False) -> tuple[bool, str]:
     dest_dir.mkdir(parents=True, exist_ok=True)
     meta_path = dest_dir / "download_metadata.json"
-    if meta_path.exists():
+    if not force and meta_path.exists():
         meta = json.loads(meta_path.read_text(encoding="utf-8"))
-        if meta.get("accession") == accession and any(dest_dir.rglob("*.faa")):
+        # Re-fetch older packages that lack genomic FASTA (needed for antiSMASH fallback).
+        has_fna = any(dest_dir.rglob("*.fna"))
+        if (
+            meta.get("accession") == accession
+            and _has_protein_and_sequence(dest_dir)
+            and has_fna
+            and meta.get("includes_genome_fasta")
+        ):
             return True, "already downloaded"
 
     zip_path = dest_dir / "ncbi_dataset.zip"
@@ -92,6 +107,10 @@ def download_genome(accession: str, dest_dir: Path) -> tuple[bool, str]:
         "source": "ncbi_datasets_v2_api",
         "zip": str(zip_path),
         "bytes": len(data),
+        "includes_genome_fasta": True,
+        "includes_protein_fasta": True,
+        "includes_gbff": True,
+        "includes_gff": True,
     }
     meta_path.write_text(json.dumps(meta, indent=2), encoding="utf-8")
     return True, "downloaded via NCBI Datasets API"
@@ -102,6 +121,11 @@ def main(argv: Optional[List[str]] = None) -> int:
     parser.add_argument("--species-list", type=Path, default=DEFAULT_LIST)
     parser.add_argument("--output-dir", type=Path, default=DEFAULT_OUT)
     parser.add_argument("--dry-run", action="store_true")
+    parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Re-download even when a genome package already exists",
+    )
     args = parser.parse_args(argv)
 
     targets = load_fungi_list(args.species_list)
@@ -123,7 +147,7 @@ def main(argv: Optional[List[str]] = None) -> int:
             print(f"[dry] {species} ({acc}) → {dest}")
             continue
 
-        success, msg = download_genome(acc, dest)
+        success, msg = download_genome(acc, dest, force=args.force)
         if success:
             ok += 1
             print(f"[ok] {species} ({acc}) → {dest}: {msg}")

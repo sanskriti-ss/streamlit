@@ -26,6 +26,29 @@ from genome_investigation.antismash_runner import (
 )
 from genome_investigation.io_utils import load_yaml, species_slug
 
+
+def _find_genome_fasta(genome_dir: Path) -> Optional[Path]:
+    for pattern in ("*.fna", "*.fasta", "*.fa"):
+        hits = sorted(genome_dir.rglob(pattern))
+        # Prefer genomic.fna over misc assembly files when present.
+        preferred = [p for p in hits if "genomic" in p.name.lower()]
+        if preferred:
+            return preferred[0]
+        if hits:
+            return hits[0]
+    return None
+
+
+def _should_retry_with_fasta(message: str) -> bool:
+    blob = (message or "").lower()
+    markers = (
+        "multiple cds features have the same location",
+        "duplicate cds",
+        "invalid location",
+        "could not parse",
+    )
+    return any(m in blob for m in markers)
+
 REPO_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_LIST = Path(__file__).resolve().parent / "selected_fungi.yaml"
 DEFAULT_GENOMES = REPO_ROOT / "data" / "genomes_fungi"
@@ -83,8 +106,30 @@ def run_antismash_on_fungi(
             ok += 1
             continue
 
-        extra = ["--taxon", "fungi"] if itype == "fasta" else None
+        # Fungal antiSMASH always declares taxon=fungi (extra_args override defaults
+        # for FASTA; GBFF uses embedded annotations with --genefinding-tool none).
+        extra = ["--taxon", "fungi"]
         success, msg = run_antismash(inp, out_dir, input_type=itype, extra_args=extra)
+        if (not success) and itype == "genbank" and _should_retry_with_fasta(msg):
+            fasta = _find_genome_fasta(gdir)
+            if fasta is not None:
+                print(
+                    f"[retry] {species}: GBFF failed ({msg.splitlines()[0][:120]}); "
+                    f"retrying with FASTA {fasta.name}"
+                )
+                # Clear partial failed output so antiSMASH can rewrite the directory.
+                for leftover in out_dir.glob("*"):
+                    if leftover.is_file():
+                        leftover.unlink()
+                success, msg = run_antismash(
+                    fasta, out_dir, input_type="fasta", extra_args=extra
+                )
+            else:
+                print(
+                    f"[warn] {species}: GBFF failed and no genomic FASTA found "
+                    "(re-run fungi_genome_download to fetch GENOME_FASTA)"
+                )
+
         if success:
             ok += 1
             print(f"[ok] antiSMASH {species}: {msg}")
@@ -93,6 +138,7 @@ def run_antismash_on_fungi(
             print(f"[warn] antiSMASH {species}: {msg}")
 
     print(f"[antiSMASH] completed {ok}, failed {fail}")
+    # Partial success is OK — still ingest whatever genomic.json files exist.
     return 0 if ok > 0 else 2
 
 
@@ -126,8 +172,11 @@ def main(argv: Optional[List[str]] = None) -> int:
     if not args.skip_antismash:
         rc = run_antismash_on_fungi(targets, args.genome_dir, args.antismash_dir)
         if rc != 0:
-            return rc
-        rc = _run(
+            print(
+                "[warn] antiSMASH finished with failures; continuing to ingest "
+                "any successful outputs and build utilization layer"
+            )
+        ingest_rc = _run(
             [
                 sys.executable,
                 "-m",
@@ -138,8 +187,8 @@ def main(argv: Optional[List[str]] = None) -> int:
                 str(PROD_OUT),
             ]
         )
-        if rc != 0:
-            return rc
+        if ingest_rc != 0:
+            print("[warn] antismash_db_ingest failed; utilization will still run")
 
     if not args.skip_utilization:
         rc = _run(

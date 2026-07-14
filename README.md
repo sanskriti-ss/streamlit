@@ -81,7 +81,15 @@ Requires optional CLIs: NCBI `datasets`, `antismash`, `amrfinder`. Results: `gen
 
 ## Symbiosis network (bacteria + fungi)
 
-A separate Streamlit app explores cross-kingdom production ↔ utilization synergy networks. It works with partial data (bacteria-only is fine).
+Integrated as the **Symbiosis Network** tab in the main app. Kingdom scope presets
+let you view both kingdoms, bacteria only, or fungi only.
+
+```bash
+streamlit run app.py
+# then open "Symbiosis Network" in the sidebar
+```
+
+Standalone launcher (same UI):
 
 ```bash
 streamlit run symbiosis_network_app.py
@@ -90,7 +98,7 @@ streamlit run symbiosis_network_app.py
 - Configure data paths in [`symbiosis_data_paths.yaml`](symbiosis_data_paths.yaml)
 - Fungi pipelines: [`fungi_investigation/README.md`](fungi_investigation/README.md)
 
-Layers (multi-select in the app):
+Layers (multi-select; driven by kingdom-scope preset):
 
 | Layer | Source |
 |-------|--------|

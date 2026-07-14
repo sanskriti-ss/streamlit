@@ -13,6 +13,7 @@ from tabs import (
     comparison,
     species_analysis,
     genome_bgc_evidence,
+    symbiosis_network,
 )
 from utils.data_loader import load_data
 
@@ -27,6 +28,7 @@ available_tabs = [
     "Comparison",
     "Species Analysis",
     "Genome and BGC Evidence",
+    "Symbiosis Network",
 ]
 
 # Load CSV files from the data_files folder (do this before sidebar to avoid reloading)
@@ -81,3 +83,5 @@ elif st.session_state.selected_tab == "Species Analysis":
     species_analysis.display(data_frames)
 elif st.session_state.selected_tab == "Genome and BGC Evidence":
     genome_bgc_evidence.display(data_frames)
+elif st.session_state.selected_tab == "Symbiosis Network":
+    symbiosis_network.display(data_frames)

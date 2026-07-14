@@ -33,9 +33,15 @@ Download reference genomes, run antiSMASH, and scan protein FASTA for utilizatio
 /Users/sanskriti/miniconda3/bin/python -m fungi_investigation.fetch_fungi_predicted
 ```
 
-Species list: `fungi_investigation/selected_fungi.yaml`  
-Genomes: `data/genomes_fungi/`  
+Species list: `fungi_investigation/selected_fungi.yaml` (~26 reference fungi)  
+Genomes: `data/genomes_fungi/` (protein FASTA + genomic FASTA + GBFF)  
 antiSMASH output: `results/antismash_fungi/`
+
+If a GenBank annotation has duplicate CDS features (seen with *Neurospora crassa*),
+the pipeline retries antiSMASH on the genomic FASTA with `--taxon fungi`.
+
+`FUNG-GROWTH` bulk experimental data is separate (https://www.fung-growth.org/) —
+when that site is down, predicted layers still grow via this genome pipeline.
 
 ## Predicted — production (antiSMASH only)
 
@@ -91,6 +97,15 @@ production rows carry a `+degradation` suffix on their source layer and confiden
 to the utilization confidence × `release_confidence`. Add rows to extend the bridge.
 
 ## Symbiosis app
+
+Integrated tab in the main Streamlit app:
+
+```bash
+streamlit run app.py
+# sidebar → Symbiosis Network
+```
+
+Kingdom scope: Both / Bacteria only / Fungi only. Standalone:
 
 ```bash
 streamlit run symbiosis_network_app.py

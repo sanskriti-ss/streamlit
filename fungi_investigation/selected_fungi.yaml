@@ -1,7 +1,9 @@
 # Reference fungal genomes for predicted production/utilization layers.
 # FUNG-GROWTH experimental data is populated separately (manual export).
+# Prefer RefSeq (GCF_*) assemblies with protein annotations when available.
 
 species:
+  # --- core industrial / model (existing) ---
   - species: Aspergillus niger
     accession: GCF_000002855.4
   - species: Trichoderma reesei
@@ -14,3 +16,51 @@ species:
     accession: GCF_000182925.2
   - species: Schizophyllum commune
     accession: GCF_000143185.2
+
+  # --- Aspergillus + allies ---
+  - species: Aspergillus oryzae
+    accession: GCF_000184455.2
+  - species: Aspergillus fumigatus
+    accession: GCF_000002655.1
+  - species: Aspergillus nidulans
+    accession: GCF_000149205.2
+  - species: Aspergillus terreus
+    accession: GCF_000149615.1
+
+  # --- yeasts ---
+  - species: Candida albicans
+    accession: GCF_000182965.3
+  - species: Nakaseomyces glabratus
+    accession: GCF_000002545.3
+  - species: Yarrowia lipolytica
+    accession: GCF_000002525.2
+  - species: Komagataella phaffii
+    accession: GCF_000027005.1
+  - species: Schizosaccharomyces pombe
+    accession: GCF_000002945.1
+  - species: Kluyveromyces marxianus
+    accession: GCF_001417885.1
+
+  # --- pathogens / plant-associated ---
+  - species: Fusarium graminearum
+    accession: GCF_000240135.3
+  - species: Magnaporthe oryzae
+    accession: GCF_000002495.2
+  - species: Botrytis cinerea
+    accession: GCF_000143535.2
+  - species: Cryptococcus neoformans
+    accession: GCF_000091045.1
+  - species: Ustilago maydis
+    accession: GCF_000328475.2
+
+  # --- zygomycete / basidiomycete degraders ---
+  - species: Rhizopus delemar
+    accession: GCF_000149305.1
+  - species: Phanerochaete chrysosporium
+    accession: GCF_000271605.1
+  - species: Pleurotus ostreatus
+    accession: GCF_014466175.1
+  - species: Laccaria bicolor
+    accession: GCF_000299015.1
+  - species: Postia placenta
+    accession: GCF_000235565.1
