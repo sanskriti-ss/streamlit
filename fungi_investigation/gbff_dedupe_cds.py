@@ -4,7 +4,7 @@ Clean fungal GBFF/GBK files so antiSMASH can parse them.
 Fixes common RefSeq issues:
   - Multiple CDS features have the same location
   - multiple CDS features have the same name for mapping
-  - location contains overlapping exons
+  - location contains overlapping exons (CDS, mRNA, and gene)
 
 Usage:
   python -m fungi_investigation.gbff_dedupe_cds \\
@@ -121,12 +121,15 @@ def _clean_record(record: str) -> Tuple[str, int]:
             block.append(nxt)
             i += 1
 
+        loc_full = _full_location(loc, block)
+
+        # antiSMASH also rejects overlapping exons on mRNA/gene features.
+        if key in {"CDS", "mRNA", "gene"} and _exons_overlap(loc_full):
+            changes += 1
+            continue
+
         if key == "CDS":
-            loc_full = _full_location(loc, block)
             if loc_full in seen_cds_locs:
-                changes += 1
-                continue
-            if _exons_overlap(loc_full):
                 changes += 1
                 continue
             seen_cds_locs.add(loc_full)

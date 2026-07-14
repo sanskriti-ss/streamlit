@@ -116,6 +116,7 @@ def run_antismash_on_fungi(
             continue
 
         out_dir = antismash_root / slug / (acc or inp.parent.name)
+        _normalize_antismash_json(out_dir)
         if (out_dir / "genomic.json").exists():
             print(f"[skip] antiSMASH output exists for {species}")
             ok += 1

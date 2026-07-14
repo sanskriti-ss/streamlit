@@ -587,11 +587,11 @@ def load_fungi_predicted(
     ):
         rel = config.get(key, "")
         path = REPO_ROOT / rel if rel else None
-        label = LAYER_LABELS["fungi_predicted"]
+        label = f"{LAYER_LABELS['fungi_predicted']} ({activity})"
         if not path or not path.exists():
             statuses.append(
                 LayerStatus(
-                    "fungi_predicted",
+                    f"fungi_predicted_{activity}",
                     label,
                     False,
                     path,
@@ -609,20 +609,23 @@ def load_fungi_predicted(
                 default_activity=activity,
             )
             chunk["activity"] = activity
+            n_spp = int(chunk["species"].nunique()) if not chunk.empty else 0
             parts.append(chunk)
             statuses.append(
                 LayerStatus(
-                    "fungi_predicted",
+                    f"fungi_predicted_{activity}",
                     label,
                     True,
                     path,
                     len(chunk),
-                    f"Loaded {len(chunk):,} rows from {path.name}",
+                    f"{len(chunk):,} rows · {n_spp} species from {path.name}",
                 )
             )
         except Exception as exc:
             statuses.append(
-                LayerStatus("fungi_predicted", label, False, path, 0, str(exc))
+                LayerStatus(
+                    f"fungi_predicted_{activity}", label, False, path, 0, str(exc)
+                )
             )
 
     if not parts:

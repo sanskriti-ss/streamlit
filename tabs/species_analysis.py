@@ -466,13 +466,29 @@ def display(data_frames=None):
         "Bacterial BacDive deep-dive. For bacteria ↔ fungi metabolic partners, "
         "use the Symbiosis Network tab."
     )
-    if st.button(
-        "Open Symbiosis Network (bacteria + fungi)",
-        key="species_analysis_to_symbiosis",
-        help="Switch to the cross-kingdom synergy explorer",
-    ):
+    link_col, btn_col = st.columns([2, 1])
+    with link_col:
+        deep_species = st.text_input(
+            "Optional species to open in Symbiosis",
+            placeholder="e.g. Pseudomonas putida or Aspergillus niger",
+            key="species_analysis_symbiosis_species",
+            label_visibility="collapsed",
+        )
+    with btn_col:
+        open_symbiosis = st.button(
+            "Open Symbiosis Network",
+            key="species_analysis_to_symbiosis",
+            help="Switch to the cross-kingdom synergy explorer",
+            use_container_width=True,
+        )
+    if open_symbiosis:
         st.session_state.selected_tab = "Symbiosis Network"
         st.query_params["tab"] = "Symbiosis Network"
+        species_q = (deep_species or "").strip()
+        if species_q:
+            st.query_params["symbiosis_species"] = species_q
+            st.session_state.symbiosis_focus_mode = "Species"
+            st.session_state.symbiosis_sp_query = species_q
         st.rerun()
     st.markdown("---")
     

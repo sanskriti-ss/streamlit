@@ -42,11 +42,20 @@ DEFAULT_OUTPUT = REPO_ROOT / "fungi_data" / "predicted" / "fungi_phenotype_confi
 
 def _iter_antismash_jsons(root: Path) -> Iterator[Tuple[Path, str, str]]:
     """Yield (json_path, species_guess, accession_guess)."""
-    patterns = ("genomic.json", "index.json", "*.antismash.json")
+    patterns = (
+        "genomic.json",
+        "genomic.gbff.dedup.json",
+        "index.json",
+        "*.antismash.json",
+        "genomic*.json",
+    )
     seen: set = set()
     for pattern in patterns:
         for path in sorted(root.rglob(pattern)):
             if path in seen or not path.is_file():
+                continue
+            # Skip per-region JS-style dumps; keep primary antiSMASH result JSON.
+            if path.name.endswith(".regions.json"):
                 continue
             seen.add(path)
             parts = path.parts

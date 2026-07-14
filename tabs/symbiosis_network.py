@@ -238,15 +238,21 @@ def display(_data_frames=None) -> None:
     m2.metric("Organisms", f"{n_species:,}")
     m3.metric("Metabolites", f"{n_mets:,}")
     m4.metric("Phenotype rows", f"{len(df):,}")
+
+    fungi_bits = []
+    if n_fungi > 0:
+        fungi_df = df[df["kingdom"].astype(str) == "fungi"]
+        n_prod = int(
+            fungi_df.loc[fungi_df["activity"] == "production", "species"].nunique()
+        )
+        n_util = int(
+            fungi_df.loc[fungi_df["activity"] == "utilization", "species"].nunique()
+        )
+        fungi_bits.append(f"{n_prod} with production · {n_util} with utilization")
     st.caption(
         f"Loaded **{n_bac:,}** bacterial and **{n_fungi:,}** fungal organisms "
         f"at current layers/filters"
-        + (
-            " (fungal production from antiSMASH may still be catching up — "
-            "utilization predictions are already included)."
-            if n_fungi > 0
-            else ""
-        )
+        + (f" ({'; '.join(fungi_bits)})" if fungi_bits else "")
     )
 
     prod_mat, util_mat, meta = build_activity_matrices(df)
