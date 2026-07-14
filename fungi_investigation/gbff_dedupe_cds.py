@@ -19,22 +19,31 @@ from pathlib import Path
 from typing import List, Tuple
 
 
-_LOC_RE = re.compile(r"\[(\d+):(\d+)\]")
+# antiSMASH-style [start:end] and GenBank start..end
+_LOC_RE = re.compile(r"\[(\d+):(\d+)\]|(\d+)\.\.(\d+)")
 
 
 def _exons_overlap(loc: str) -> bool:
     """True if a join(...) location has overlapping exon intervals."""
     if "join" not in loc.lower():
         return False
-    spans = [(int(a), int(b)) for a, b in _LOC_RE.findall(loc)]
+    spans = []
+    for a, b, c, d in _LOC_RE.findall(loc):
+        if a and b:
+            start, end = int(a), int(b)
+        else:
+            start, end = int(c), int(d)
+        if start > end:
+            start, end = end, start
+        spans.append((start, end))
     if len(spans) < 2:
         return False
     spans.sort()
     for i in range(1, len(spans)):
         prev_a, prev_b = spans[i - 1]
         a, b = spans[i]
-        # half-open style overlap check on sorted intervals
-        if a < prev_b and not (a == prev_a and b == prev_b):
+        # Inclusive interval overlap (excluding exact duplicate spans).
+        if a <= prev_b and not (a == prev_a and b == prev_b):
             return True
     return False
 

@@ -462,6 +462,18 @@ def display(data_frames=None):
         data_frames (dict): Dictionary of loaded data frames (for compatibility)
     """
     st.title("Species Metabolite Resistance Analysis")
+    st.caption(
+        "Bacterial BacDive deep-dive. For bacteria ↔ fungi metabolic partners, "
+        "use the Symbiosis Network tab."
+    )
+    if st.button(
+        "Open Symbiosis Network (bacteria + fungi)",
+        key="species_analysis_to_symbiosis",
+        help="Switch to the cross-kingdom synergy explorer",
+    ):
+        st.session_state.selected_tab = "Symbiosis Network"
+        st.query_params["tab"] = "Symbiosis Network"
+        st.rerun()
     st.markdown("---")
     
     # Analysis mode selection

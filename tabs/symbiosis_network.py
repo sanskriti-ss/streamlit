@@ -8,6 +8,7 @@ bacteria only, or fungi only.
 
 from __future__ import annotations
 
+import pandas as pd
 import streamlit as st
 
 from utils.symbiosis_data import (
@@ -70,12 +71,56 @@ def _sync_layers_for_scope(scope: str) -> None:
     st.session_state._symbiosis_prev_scope = scope
 
 
+def _partner_rows_for_focal(pairs_df, focal_key: str, *, top_n: int = 15):
+    """Top synergy partners for one organism (by synergy_key)."""
+    if pairs_df is None or pairs_df.empty or not focal_key:
+        return pairs_df.iloc[0:0] if pairs_df is not None else None
+    a = pairs_df[pairs_df["species_a_key"].astype(str) == focal_key].copy()
+    b = pairs_df[pairs_df["species_b_key"].astype(str) == focal_key].copy()
+    rows = []
+    for _, r in a.iterrows():
+        rows.append(
+            {
+                "partner": r.get("species_b"),
+                "partner_kingdom": r.get("kingdom_b"),
+                "synergy_score": r.get("synergy_score"),
+                "focal_produces_partner_utilizes": r.get("a_produces_b_utilizes_n"),
+                "partner_produces_focal_utilizes": r.get("b_produces_a_utilizes_n"),
+                "metabolites_out": r.get("a_produces_b_utilizes_mets"),
+                "metabolites_in": r.get("b_produces_a_utilizes_mets"),
+            }
+        )
+    for _, r in b.iterrows():
+        rows.append(
+            {
+                "partner": r.get("species_a"),
+                "partner_kingdom": r.get("kingdom_a"),
+                "synergy_score": r.get("synergy_score"),
+                "focal_produces_partner_utilizes": r.get("b_produces_a_utilizes_n"),
+                "partner_produces_focal_utilizes": r.get("a_produces_b_utilizes_n"),
+                "metabolites_out": r.get("b_produces_a_utilizes_mets"),
+                "metabolites_in": r.get("a_produces_b_utilizes_mets"),
+            }
+        )
+    if not rows:
+        return pairs_df.iloc[0:0]
+
+    out = pd.DataFrame(rows).sort_values("synergy_score", ascending=False)
+    return out.head(top_n)
+
+
 def display(_data_frames=None) -> None:
     st.title("Symbiosis metabolite network")
     st.caption(
         "Explore production ↔ utilization synergy between bacteria and fungi. "
         "Use kingdom scope to view both, bacteria only, or fungi only."
     )
+
+    # Deep-link support: ?tab=Symbiosis+Network&symbiosis_species=Aspergillus+niger
+    q_species = (st.query_params.get("symbiosis_species") or "").strip()
+    if q_species and "symbiosis_focus_mode" not in st.session_state:
+        st.session_state.symbiosis_focus_mode = "Species"
+        st.session_state.symbiosis_sp_query = q_species
 
     with st.sidebar:
         st.header("Symbiosis")
@@ -290,6 +335,24 @@ def display(_data_frames=None) -> None:
         selected_met = None
 
     st.plotly_chart(fig, use_container_width=True)
+
+    if focus_mode == "Species" and focal_key:
+        partners = _partner_rows_for_focal(pairs_df, focal_key, top_n=15)
+        if partners is not None and not partners.empty:
+            partner_label = meta.get(focal_key, {}).get("species", focal_key)
+            st.subheader(f"Top partners for {partner_label}")
+            cross = partners[
+                partners["partner_kingdom"].astype(str).str.lower()
+                != str(meta.get(focal_key, {}).get("kingdom", "")).lower()
+            ]
+            show_partners = cross if not cross.empty else partners
+            if not cross.empty:
+                st.caption(
+                    f"Showing top {len(show_partners)} cross-kingdom partner(s) by synergy score."
+                )
+            else:
+                st.caption("No cross-kingdom partners at current filters; showing same-kingdom.")
+            st.dataframe(show_partners, use_container_width=True, hide_index=True)
 
     tab_pairs, tab_pheno, tab_help = st.tabs(
         ["Synergy pairs", "Loaded phenotypes", "Help"]
