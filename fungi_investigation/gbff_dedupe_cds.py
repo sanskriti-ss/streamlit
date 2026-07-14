@@ -1,8 +1,10 @@
 """
-Remove duplicate CDS features that share the same location from a GBFF/GBK file.
+Clean fungal GBFF/GBK files so antiSMASH can parse them.
 
-antiSMASH refuses some RefSeq fungal GBFF files with:
-  Multiple CDS features have the same location: join{...}
+Fixes common RefSeq issues:
+  - Multiple CDS features have the same location
+  - multiple CDS features have the same name for mapping
+  - location contains overlapping exons
 
 Usage:
   python -m fungi_investigation.gbff_dedupe_cds \\
@@ -14,34 +16,86 @@ from __future__ import annotations
 import argparse
 import re
 from pathlib import Path
+from typing import List, Tuple
 
 
-def dedupe_cds_gbff(text: str) -> tuple[str, int]:
-    """Drop CDS feature blocks that share the same location string within a record."""
+_LOC_RE = re.compile(r"\[(\d+):(\d+)\]")
+
+
+def _exons_overlap(loc: str) -> bool:
+    """True if a join(...) location has overlapping exon intervals."""
+    if "join" not in loc.lower():
+        return False
+    spans = [(int(a), int(b)) for a, b in _LOC_RE.findall(loc)]
+    if len(spans) < 2:
+        return False
+    spans.sort()
+    for i in range(1, len(spans)):
+        prev_a, prev_b = spans[i - 1]
+        a, b = spans[i]
+        # half-open style overlap check on sorted intervals
+        if a < prev_b and not (a == prev_a and b == prev_b):
+            return True
+    return False
+
+
+def _feature_gene_name(block: List[str]) -> str:
+    for bl in block:
+        m = re.search(r'/(?:gene|locus_tag|protein_id)="([^"]+)"', bl)
+        if m:
+            return m.group(1)
+    return ""
+
+
+def _rewrite_gene_name(block: List[str], new_name: str) -> List[str]:
+    out: List[str] = []
+    replaced = False
+    for bl in block:
+        if not replaced and re.search(r'/(?:gene|locus_tag)="', bl):
+            out.append(re.sub(r'/(gene|locus_tag)="[^"]+"', rf'/\1="{new_name}"', bl, count=1))
+            replaced = True
+        else:
+            out.append(bl)
+    return out
+
+
+def _full_location(key_line_loc: str, block: List[str]) -> str:
+    loc_full = key_line_loc
+    for bl in block[1:]:
+        stripped = bl.strip()
+        if stripped.startswith("/"):
+            break
+        loc_full += stripped
+    return loc_full.replace(" ", "")
+
+
+def dedupe_cds_gbff(text: str) -> Tuple[str, int]:
+    """Clean CDS features across all LOCUS records. Returns (text, n_changes)."""
     parts = re.split(r"(?=^LOCUS )", text, flags=re.M)
-    out_parts: list[str] = []
-    removed = 0
+    out_parts: List[str] = []
+    changes = 0
     for part in parts:
         if not part.strip():
             continue
-        cleaned, n = _dedupe_record(part)
+        cleaned, n = _clean_record(part)
         out_parts.append(cleaned)
-        removed += n
-    return "".join(out_parts), removed
+        changes += n
+    return "".join(out_parts), changes
 
 
-def _dedupe_record(record: str) -> tuple[str, int]:
+def _clean_record(record: str) -> Tuple[str, int]:
     lines = record.splitlines(keepends=True)
     if not lines:
         return record, 0
 
-    out: list[str] = []
+    out: List[str] = []
     i = 0
     seen_cds_locs: set[str] = set()
-    removed = 0
+    seen_names: set[str] = set()
+    changes = 0
+
     while i < len(lines):
         line = lines[i]
-        # Feature key lines start at column 5 (0-index: 5 spaces) per GenBank.
         m = re.match(r"^ {5}(\S+)\s+(\S.*)$", line)
         if not m:
             out.append(line)
@@ -49,7 +103,6 @@ def _dedupe_record(record: str) -> tuple[str, int]:
             continue
 
         key, loc = m.group(1), m.group(2).strip()
-        # Collect full feature block (qualifier lines start with 21 spaces).
         block = [line]
         i += 1
         while i < len(lines):
@@ -60,38 +113,49 @@ def _dedupe_record(record: str) -> tuple[str, int]:
             i += 1
 
         if key == "CDS":
-            # Continuation of location on following lines without '/'
-            loc_full = loc
-            for bl in block[1:]:
-                stripped = bl.strip()
-                if stripped.startswith("/"):
-                    break
-                loc_full += stripped
+            loc_full = _full_location(loc, block)
             if loc_full in seen_cds_locs:
-                removed += 1
+                changes += 1
+                continue
+            if _exons_overlap(loc_full):
+                changes += 1
                 continue
             seen_cds_locs.add(loc_full)
 
+            name = _feature_gene_name(block)
+            if name:
+                if name in seen_names:
+                    n = 2
+                    candidate = f"{name}_{n}"
+                    while candidate in seen_names:
+                        n += 1
+                        candidate = f"{name}_{n}"
+                    block = _rewrite_gene_name(block, candidate)
+                    seen_names.add(candidate)
+                    changes += 1
+                else:
+                    seen_names.add(name)
+
         out.extend(block)
 
-    return "".join(out), removed
+    return "".join(out), changes
 
 
 def write_deduped_gbff(input_path: Path, output_path: Path) -> int:
     text = input_path.read_text(encoding="utf-8", errors="replace")
-    cleaned, removed = dedupe_cds_gbff(text)
+    cleaned, changes = dedupe_cds_gbff(text)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(cleaned, encoding="utf-8")
-    return removed
+    return changes
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Dedupe CDS features in a GBFF file")
+    parser = argparse.ArgumentParser(description="Clean CDS features in a fungal GBFF file")
     parser.add_argument("--input", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
-    removed = write_deduped_gbff(args.input, args.output)
-    print(f"[ok] Wrote {args.output} (removed {removed} duplicate CDS features)")
+    n = write_deduped_gbff(args.input, args.output)
+    print(f"[ok] Wrote {args.output} ({n} CDS fixes: drop/rename)")
     return 0
 
 

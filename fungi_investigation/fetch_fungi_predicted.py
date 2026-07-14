@@ -33,6 +33,8 @@ def _should_retry_dedupe_gbff(message: str) -> bool:
     markers = (
         "multiple cds features have the same location",
         "duplicate cds",
+        "same name for mapping",
+        "overlapping exons",
     )
     return any(m in blob for m in markers)
 
@@ -102,20 +104,32 @@ def run_antismash_on_fungi(
             continue
 
         # Fungal antiSMASH requires annotated GenBank (no fungal gene finder for FASTA).
+        # Proactively clean RefSeq GBFF quirks (dupe CDS loc/name, overlapping exons).
         extra = ["--taxon", "fungi"]
-        success, msg = run_antismash(inp, out_dir, input_type=itype, extra_args=extra)
-        if (not success) and itype == "genbank" and _should_retry_dedupe_gbff(msg):
+        run_input, run_type = inp, itype
+        if itype == "genbank":
             dedup_path = inp.with_suffix(inp.suffix + ".dedup.gbff")
             try:
-                removed = write_deduped_gbff(inp, dedup_path)
+                nfix = write_deduped_gbff(inp, dedup_path)
+                if nfix > 0:
+                    print(f"[clean] {species}: applied {nfix} CDS fix(es) → {dedup_path.name}")
+                    run_input, run_type = dedup_path, "genbank"
+            except OSError as exc:
+                print(f"[warn] {species}: GBFF clean skipped ({exc}); using original")
+
+        success, msg = run_antismash(
+            run_input, out_dir, input_type=run_type, extra_args=extra
+        )
+        if (not success) and run_type == "genbank" and _should_retry_dedupe_gbff(msg):
+            # Second pass after clearing partial antiSMASH output.
+            dedup_path = inp.with_suffix(inp.suffix + ".dedup.gbff")
+            try:
+                nfix = write_deduped_gbff(inp, dedup_path)
             except OSError as exc:
                 print(f"[warn] {species}: could not write deduped GBFF: {exc}")
-                removed = -1
-            if removed >= 0:
-                print(
-                    f"[retry] {species}: GBFF had duplicate CDS "
-                    f"(removed {removed}); retrying with {dedup_path.name}"
-                )
+                nfix = -1
+            if nfix >= 0:
+                print(f"[retry] {species}: re-running cleaned GBFF ({nfix} fixes)")
                 _clear_outdir_files(out_dir)
                 success, msg = run_antismash(
                     dedup_path, out_dir, input_type="genbank", extra_args=extra
@@ -141,9 +155,22 @@ def main(argv: Optional[List[str]] = None) -> int:
     parser.add_argument("--skip-download", action="store_true")
     parser.add_argument("--skip-antismash", action="store_true")
     parser.add_argument("--skip-utilization", action="store_true")
+    parser.add_argument(
+        "--only-species",
+        nargs="+",
+        default=None,
+        help="Restrict to these species names (exact match as in selected_fungi.yaml)",
+    )
     args = parser.parse_args(argv)
 
     targets = _load_targets(args.species_list)
+    if args.only_species:
+        wanted = {s.strip().lower() for s in args.only_species}
+        targets = [t for t in targets if str(t.get("species", "")).strip().lower() in wanted]
+        print(f"[filter] running {len(targets)} species: {[t['species'] for t in targets]}")
+        if not targets:
+            print("[error] --only-species matched nothing")
+            return 2
 
     if not args.skip_download:
         rc = _run(
