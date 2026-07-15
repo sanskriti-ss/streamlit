@@ -14,11 +14,12 @@ import re
 import shutil
 import subprocess
 from pathlib import Path
-from typing import Any, Dict, List, Optional
-
-import pandas as pd
+from typing import Any, Dict, List, Optional, TYPE_CHECKING
 
 from genome_investigation.io_utils import load_selected_species, load_yaml, species_slug
+
+if TYPE_CHECKING:
+    import pandas as pd
 
 DEFAULT_ANTISMASH_DIR = Path(__file__).resolve().parent.parent / "results" / "antismash"
 DEFAULT_SUMMARY = Path(__file__).resolve().parent / "results" / "antismash_summary.csv"
@@ -315,7 +316,7 @@ def run_antismash_auto(
 
 def collect_genome_jobs(
     genome_root: Path,
-    enriched: pd.DataFrame,
+    enriched: "pd.DataFrame",
     selected: dict,
 ) -> List[dict]:
     species_set = {s.strip().lower() for s in selected.get("species", [])}
@@ -437,6 +438,8 @@ def main(argv: Optional[List[str]] = None) -> int:
     if not enriched_path.exists():
         print(f"[error] missing {enriched_path}")
         return 1
+
+    import pandas as pd
 
     enriched = pd.read_csv(enriched_path)
     jobs = collect_genome_jobs(Path(args.genome_dir), enriched, selected)

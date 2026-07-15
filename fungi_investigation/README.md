@@ -46,12 +46,23 @@ when that site is down, grow coverage via this genome pipeline instead.
 
 ## Predicted — production (antiSMASH only)
 
-**Option A — local antiSMASH** (requires `antismash_env` conda env on PATH):
+**Option A — local antiSMASH**
+
+Use the **base** conda `python` (has pandas). The runner finds
+`antismash` via `~/miniconda3/envs/antismash_env/bin/antismash` — do **not**
+put `antismash_env/bin` first on `PATH` or `python` will lose pandas.
 
 ```bash
-PATH="$HOME/miniconda3/envs/antismash_env/bin:$PATH" \
-  python -m fungi_investigation.fetch_fungi_predicted --skip-download --skip-utilization
+# preferred
+~/miniconda3/bin/python -m fungi_investigation.fetch_fungi_predicted \
+  --skip-download --skip-utilization
+
+# also OK if your default python already has pandas
+python -m fungi_investigation.fetch_fungi_predicted --skip-download --skip-utilization
 ```
+
+If you accidentally invoke the antiSMASH env’s python, the orchestrator
+re-execs under `~/miniconda3/bin/python` automatically.
 
 **Option B — antiSMASH-DB bulk** (421+ fungal genomes):
 

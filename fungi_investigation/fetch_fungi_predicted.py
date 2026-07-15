@@ -18,6 +18,55 @@ from pathlib import Path
 from typing import List, Optional
 
 ANTISMASH_ENV_BIN = Path.home() / "miniconda3" / "envs" / "antismash_env" / "bin"
+# Orchestrator needs pandas/etc.; antiSMASH binary is resolved via absolute path
+# in antismash_runner — do NOT put antismash_env first on PATH for `python -m`.
+ORCHESTRATOR_PYTHON = Path.home() / "miniconda3" / "bin" / "python"
+
+
+def _ensure_orchestrator_python(argv: Optional[List[str]] = None) -> None:
+    """Re-exec under base conda python if this interpreter lacks pandas.
+
+    Putting ``antismash_env/bin`` first on PATH makes ``python`` the antiSMASH
+    env (no pandas), which previously broke post-retry watchers.
+    """
+    if os.environ.get("FUNGI_ORCHESTRATOR_READY") == "1":
+        return
+    try:
+        import pandas  # noqa: F401
+        return
+    except ImportError:
+        pass
+    alt = Path(os.environ.get("FUNGI_ORCHESTRATOR_PYTHON", "") or ORCHESTRATOR_PYTHON)
+    if not alt.exists():
+        raise SystemExit(
+            "[error] pandas is required to run fetch_fungi_predicted.\n"
+            f"       Tried this interpreter: {sys.executable}\n"
+            f"       Install pandas or run with: {ORCHESTRATOR_PYTHON} -m "
+            "fungi_investigation.fetch_fungi_predicted ..."
+        )
+    if Path(sys.executable).resolve() == alt.resolve():
+        raise SystemExit(
+            "[error] pandas missing even in orchestrator python "
+            f"({alt}). Install pandas there, then retry."
+        )
+    print(
+        f"[env] re-exec under {alt} (current python lacks pandas: {sys.executable})"
+    )
+    env = os.environ.copy()
+    env["FUNGI_ORCHESTRATOR_READY"] = "1"
+    # Do not put antismash_env/bin first on PATH — that shadows `python`.
+    # antismash_runner resolves the binary via absolute conda path.
+    os.execve(
+        str(alt),
+        [str(alt), "-m", "fungi_investigation.fetch_fungi_predicted", *(argv or sys.argv[1:])],
+        env,
+    )
+
+
+# When launched as ``python -m ...``, re-exec before importing pandas-dependent
+# modules (antismash_env's python has antismash but not pandas).
+if __name__ == "__main__":
+    _ensure_orchestrator_python(sys.argv[1:])
 
 from fungi_investigation.gbff_dedupe_cds import write_deduped_gbff
 from genome_investigation.antismash_runner import (
@@ -174,6 +223,9 @@ def run_antismash_on_fungi(
 
 
 def main(argv: Optional[List[str]] = None) -> int:
+    argv_list = list(argv) if argv is not None else sys.argv[1:]
+    _ensure_orchestrator_python(argv_list)
+
     parser = argparse.ArgumentParser(description="Build predicted fungi data layers")
     parser.add_argument("--species-list", type=Path, default=DEFAULT_LIST)
     parser.add_argument("--genome-dir", type=Path, default=DEFAULT_GENOMES)
