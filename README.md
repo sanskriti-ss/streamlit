@@ -3,9 +3,17 @@ BacDive is the largest aggregate database for bacterial information. From here, 
 
 For more information about the data available from BacDive, visit the [BacDive Overview](BacDive_Overview.md).
 
-# How to use the streamlit :)
-The webapp is split into six tabs: General Overview, Circos, Trends, Cards, By the Numbers, and Comparison.
-They each produce different types of visualizations, tables, and/or graphs.
+# Run the app
+
+Install the dependencies from `requirements.txt`, then start the app:
+
+```bash
+streamlit run app.py
+```
+
+The sidebar contains ten sections. The core BacDive views are General Overview,
+Circos, Circle graph, Trends, Cards, By the Numbers, Comparison, and Species
+Analysis. The app also includes Genome and BGC Evidence and Symbiosis Network.
 
 ## General Overview
 The general overview allows you to do selections for negatively/positively tested, strain/isolate, production/utilization/resistance/sensitivity
@@ -27,13 +35,18 @@ Default load 'playing cards' for each of the genera, where you can see how many 
 ## By the Numbers
 There are three main features on this page. First is the summary statistics section at the top, which details how many metabolites, genera, isolates, and strains there are in your dataset. Following that, there is a “Metabolite Counts Bar Graph” section, where you can plot the top 15 genera based on neg/pos, isolate/strain, and prod/util/res/sen. This gives an overview of which genera have the most data in that category. See the figure below for an example. The third main feature is the “Homogeneous Metabolite Summary by Genus” section. For a selected metabolite category, this section lists genera where, for at least one metabolite, all species (with a minimum of 5 species) tested uniformly positive or uniformly negative. It also shows which metabolite(s) met that criteria. If a genus appears with both positive and negative results (i.e. mixed), it is omitted. 
 
-## Comparison
-This is the section where interesting synergies between genera can be found. 
-The user can select up to 10 genera to compare. Upon selecting to include/exclude strains, and the top genera, a table is generated with each genus and its species count as the row name, with columns for which metabolites each genera tested positive for in resistance, sensitivity, production, and utilization. 
+## Circle graph
+Explore the circular relationship graph view of the BacDive data.
 
-More important is the generated shared and synergy summary, which shows the prod/util synergy between the genera, i.e., do any of the genera have species that produce metabolites that the others utilize? Do they have shared utilization, which could indicate that certain metabolites are promoting their growth? Is there any metabolite they are all resistant to?
- 
-(Note that it is very slow to run, currently. Working on it!)
+## Comparison
+Compare up to ten genera across production, utilization, resistance, and
+sensitivity. The view summarizes shared metabolites and production/utilization
+synergies. Large comparisons can take time to calculate.
+
+## Species Analysis
+Inspect species-level activity and test coverage, with filters and Sankey
+visualizations for genus/metabolite relationships. Some calculations over the
+full activity datasets may be slow on first load.
 
 
 ## Genome investigation (optional)
@@ -107,10 +120,10 @@ Layers (multi-select; driven by kingdom-scope preset):
 | Experimental fungi | FUNG-GROWTH → `fungi_data/experimental/fungi_phenotypes_long.csv` |
 | Predicted fungi | antiSMASH + CAZyme → `fungi_data/predicted/` |
 
-# If you want to make local changes
-make sure requirements are installed :)))
-to run, do streamlit run app.py
+## Developer notes
 
-# Notes to devs:
-Notes:
-Species Analysis is a little slow to load. Still figuring out why?
+- The Comparison view can be slow for large selections.
+- `documentation/features.md` records a Species Analysis calculation/performance
+  note that should be reviewed against current behavior.
+- Genome and BGC and Symbiosis workflows have optional external-data/tool
+  prerequisites; see their dedicated guides before running those pipelines.
